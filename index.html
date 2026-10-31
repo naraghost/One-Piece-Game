@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>One Piece: Romance Dawn & Shells Town - GBA Beat 'Em Up</title>
+    <meta name="description" content="2D beat 'em up arcade game set in East Blue. Play as Luffy and Zoro through the Alvida and Shells Town sagas with traveling air slashes, high-combo zoom, story progression, and manga cutscenes." />
+    <meta property="og:title" content="One Piece: Romance Dawn & Shells Town - GBA Beat 'Em Up" />
+    <meta property="og:description" content="2D beat 'em up arcade game set in East Blue. Play as Luffy and Zoro through the Alvida and Shells Town sagas with traveling air slashes, high-combo zoom, story progression, and manga cutscenes." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Bricolage+Grotesque:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+      /* Prevent mobile pull-to-refresh and rubberband scrolling during action controls */
+      html, body {
+        overscroll-behavior-y: contain;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        background-color: #0b132b;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+      .font-arcade {
+        font-family: 'Bungee', cursive, sans-serif;
+      }
+      .font-heading {
+        font-family: 'Bricolage Grotesque', sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-950 text-white select-none">
+    <div id="root" class="w-full h-full overflow-hidden"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

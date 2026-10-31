@@ -1,0 +1,8 @@
+{
+  "name": "One Piece: Romance Dawn - Alvida Beat 'Em Up",
+  "description": "2D beat 'em up arcade game set in East Blue. Play as Luffy against Alvida and her pirate crew with rubber stretching attacks, combos, and mobile controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
