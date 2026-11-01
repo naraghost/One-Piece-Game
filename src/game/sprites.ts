@@ -13,7 +13,7 @@ export class SpriteRenderer {
     width: number,
     height: number,
     time: number,
-    stage: 'STAGE_1_GALLEY' | 'STAGE_2_DECK' | 'STAGE_3_BOSS' | 'STAGE_4_BASE_COURTYARD' | 'STAGE_5_FORTRESS_INTERIOR' | 'STAGE_6_MORGAN_SHOWDOWN' = 'STAGE_1_GALLEY'
+    stage: 'STAGE_1_GALLEY' | 'STAGE_2_DECK' | 'STAGE_3_BOSS' | 'STAGE_4_BASE_COURTYARD' | 'STAGE_5_FORTRESS_INTERIOR' | 'STAGE_6_MORGAN_SHOWDOWN' | 'STAGE_7_ORANGE_TOWN' = 'STAGE_1_GALLEY'
   ) {
     if (stage === 'STAGE_1_GALLEY') {
       this.drawGalleyHoldBackground(ctx, camX, width, height, time);
@@ -37,6 +37,11 @@ export class SpriteRenderer {
 
     if (stage === 'STAGE_6_MORGAN_SHOWDOWN') {
       this.drawMarineCourtyardBackground(ctx, camX, width, height, time, true);
+      return;
+    }
+
+    if (stage === 'STAGE_7_ORANGE_TOWN') {
+      this.drawOrangeTownBackground(ctx, camX, width, height, time);
       return;
     }
 
@@ -192,6 +197,9 @@ export class SpriteRenderer {
     // Playable Floorboards & Trusses
     this.drawFloorboards(ctx, camX, width, height, deckY, deckH);
     this.drawLowerTrussBraces(ctx, camX, width, height);
+
+    // Dynamic Weather Atmosphere: Ocean Sea Spray, Sea Mist & Diagonal Rain
+    this.drawOceanWeatherParticles(ctx, width, height, time, camX);
   }
 
   // C. STAGE 3: POOP DECK (Stern Platform & Lady Alvida Showdown)
@@ -231,6 +239,9 @@ export class SpriteRenderer {
     this.drawWhiteBalustrade(ctx, camX, width, railY, 48);
     this.drawFloorboards(ctx, camX, width, height, deckY, deckH);
     this.drawLowerTrussBraces(ctx, camX, width, height);
+
+    // Dynamic Weather Atmosphere on Poop Deck
+    this.drawOceanWeatherParticles(ctx, width, height, time, camX);
   }
 
   // Shared Helper: Floorboards
@@ -772,6 +783,172 @@ export class SpriteRenderer {
 
     // 2. Fortress Floor with Navy Red Carpet
     this.drawFortressFloor(ctx, camX, width, height, floorY, floorH);
+  }
+
+  // F. STAGE 7: ORANGE TOWN (Vila Laranja & Acampamento do Capitão Buggy)
+  private static drawOrangeTownBackground(
+    ctx: CanvasRenderingContext2D,
+    camX: number,
+    width: number,
+    height: number,
+    time: number
+  ) {
+    const streetY = height * 0.54;
+    const streetH = height - streetY;
+
+    // 1. Romantic Sunset / Dusk Sky Gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, streetY);
+    skyGrad.addColorStop(0, '#2e1065');
+    skyGrad.addColorStop(0.35, '#7c2d12');
+    skyGrad.addColorStop(0.7, '#ea580c');
+    skyGrad.addColorStop(1, '#fed7aa');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, width, streetY);
+
+    // Warm Sun setting on horizon
+    const sunX = width * 0.7 - ((camX * 0.05) % (width + 200));
+    const sunGrad = ctx.createRadialGradient(sunX, streetY - 20, 10, sunX, streetY - 20, 65);
+    sunGrad.addColorStop(0, '#fef08a');
+    sunGrad.addColorStop(0.4, '#f97316');
+    sunGrad.addColorStop(1, 'rgba(234, 88, 12, 0)');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(sunX, streetY - 20, 65, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Distant Sea Line
+    ctx.fillStyle = '#431407';
+    ctx.fillRect(0, streetY - 22, width, 22);
+
+    // Town Skyline: Orange-tile Mediterranean Houses, Clock Tower, Circus Tent
+    const townStep = 220;
+    const startX = -((camX * 0.35) % townStep);
+    for (let hx = startX - townStep; hx < width + townStep * 2; hx += townStep) {
+      // House Body (White / Cream Stucco)
+      ctx.fillStyle = '#fef3c7';
+      ctx.fillRect(hx, streetY - 80, 85, 80);
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(hx, streetY - 80, 85, 80);
+
+      // Orange Tile Roof (Gable Triangle)
+      ctx.fillStyle = '#ea580c';
+      ctx.beginPath();
+      ctx.moveTo(hx - 8, streetY - 80);
+      ctx.lineTo(hx + 42, streetY - 120);
+      ctx.lineTo(hx + 93, streetY - 80);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#9a3412';
+      ctx.stroke();
+
+      // Chimney with Smoke
+      ctx.fillStyle = '#7c2d12';
+      ctx.fillRect(hx + 60, streetY - 125, 12, 20);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      const smokeOffset = (time * 15 + hx) % 30;
+      ctx.beginPath();
+      ctx.arc(hx + 66, streetY - 130 - smokeOffset, 5 + smokeOffset * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Windows with Wooden Shutters
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(hx + 12, streetY - 65, 18, 20);
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(hx + 8, streetY - 65, 4, 20);
+      ctx.fillRect(hx + 30, streetY - 65, 4, 20);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(hx + 52, streetY - 65, 18, 20);
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(hx + 48, streetY - 65, 4, 20);
+      ctx.fillRect(hx + 70, streetY - 65, 4, 20);
+
+      // Ground Floor Arched Wooden Door
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath();
+      ctx.arc(hx + 42, streetY - 26, 12, Math.PI, 0);
+      ctx.rect(hx + 30, streetY - 26, 24, 26);
+      ctx.fill();
+
+      // Buggy's Circus Tent Banner & Jolly Roger (Clown Skull)
+      if (Math.abs(Math.floor(hx / townStep)) % 2 === 1) {
+        const tentX = hx + 115;
+        // Striped Tent Cone
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(tentX, streetY - 110);
+        ctx.lineTo(tentX - 40, streetY);
+        ctx.lineTo(tentX + 40, streetY);
+        ctx.closePath();
+        ctx.fill();
+        // White stripes
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(tentX, streetY - 110);
+        ctx.lineTo(tentX - 15, streetY);
+        ctx.lineTo(tentX + 15, streetY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Buggy Jolly Roger Flag on top of tent
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(tentX - 16, streetY - 135, 32, 22);
+        ctx.fillStyle = '#dc2626'; // Red Clown Nose
+        ctx.beginPath();
+        ctx.arc(tentX, streetY - 124, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(tentX - 8, streetY - 128, 4, 4); // eye left
+        ctx.fillRect(tentX + 4, streetY - 128, 4, 4); // eye right
+      }
+    }
+
+    // Street Lanterns
+    for (let lx = 140; lx < width + 300; lx += 260) {
+      const lampX = lx - ((camX * 0.45) % 780);
+      if (lampX > -20 && lampX < width + 20) {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(lampX - 2, streetY - 50, 4, 50);
+        ctx.fillRect(lampX - 7, streetY - 54, 14, 6);
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(lampX, streetY - 48, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 2. Cobblestone Paved Street
+    const streetGrad = ctx.createLinearGradient(0, streetY, 0, height);
+    streetGrad.addColorStop(0, '#78716c');
+    streetGrad.addColorStop(0.5, '#57534e');
+    streetGrad.addColorStop(1, '#292524');
+    ctx.fillStyle = streetGrad;
+    ctx.fillRect(0, streetY, width, streetH);
+
+    // Cobblestone Texture Rows
+    ctx.strokeStyle = '#44403c';
+    ctx.lineWidth = 1.5;
+    for (let cy = streetY; cy < height; cy += 14) {
+      ctx.beginPath();
+      ctx.moveTo(0, cy);
+      ctx.lineTo(width, cy);
+      ctx.stroke();
+
+      const stoneOffset = (Math.floor((cy - streetY) / 14) * 22) - (camX % 36);
+      for (let cx = stoneOffset - 36; cx < width + 36; cx += 36) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx, cy + 14);
+        ctx.stroke();
+      }
+    }
+
+    // Lower Curb Trim
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(0, height - 12, width, 12);
+    ctx.fillStyle = '#78716c';
+    ctx.fillRect(0, height - 14, width, 2);
   }
 
   // Marine Flag with Navy Seagull
@@ -1524,25 +1701,89 @@ export class SpriteRenderer {
       ctx.arc(palmX + 48, torsoY + 10, 75, -Math.PI * 0.45, Math.PI * 0.45);
       ctx.stroke();
 
-    } else if (action === 'PUNCH_1' || action === 'PUNCH_2' || action === 'PUNCH_3') {
-      // Punch combo with extension
-      const ext = action === 'PUNCH_3' ? 52 : 36;
+    } else if (action === 'VICTORY') {
+      // VICTORY POSE: Raising hands high in the air, holding straw hat, huge grinning mouth!
       ctx.fillStyle = '#ffcca0';
-      ctx.fillRect(10, torsoY + 2, ext, 11);
       ctx.strokeStyle = '#212529';
       ctx.lineWidth = 1.2;
-      ctx.strokeRect(10, torsoY + 2, ext, 11);
-
+      // Both arms thrust triumphantly upward
+      ctx.fillRect(-16, torsoY - 14, 8, 20);
+      ctx.fillRect(8, torsoY - 14, 8, 20);
+      // Clenched fist right
       ctx.beginPath();
-      ctx.arc(10 + ext, torsoY + 7, 9, 0, Math.PI * 2);
+      ctx.arc(12, torsoY - 18, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Straw hat held aloft in left hand
+      ctx.save();
+      ctx.translate(-16, torsoY - 26);
+      ctx.rotate(-0.3);
+      ctx.fillStyle = '#ffd166';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 18, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#d90429';
+      ctx.fillRect(-8, -8, 16, 8);
+      ctx.restore();
+
+    } else if (action === 'PUNCH_1' || action === 'PUNCH_2' || action === 'PUNCH_3') {
+      // DYNAMIC RUBBER ARM STRETCH (Significant reach, elastic lines, knuckle bursts)
+      const ext = action === 'PUNCH_3' ? 120 : action === 'PUNCH_2' ? 95 : 75;
+      const armCurveY = action === 'PUNCH_2' ? Math.sin(actionTimer * 15) * 8 : 0;
+      
+      // Opposite arm pulled far back for elastic tension leverage
+      ctx.fillStyle = '#ffcca0';
+      ctx.strokeStyle = '#212529';
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(-22, torsoY + 4, 12, 10);
+      ctx.beginPath();
+      ctx.arc(-24, torsoY + 9, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillRect(-14, torsoY + 2, 7, 14);
+      // Long Stretched Rubber Arm
+      ctx.fillStyle = '#ffcca0';
+      ctx.fillRect(8, torsoY + 2 + armCurveY, ext, 13);
+      ctx.strokeRect(8, torsoY + 2 + armCurveY, ext, 13);
+
+      // Elastic Ripple / Tension Lines along arm
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 1.5;
+      for (let rx = 18; rx < 8 + ext - 15; rx += 22) {
+        ctx.beginPath();
+        ctx.moveTo(rx, torsoY + 2 + armCurveY);
+        ctx.lineTo(rx + 4, torsoY + 15 + armCurveY);
+        ctx.stroke();
+      }
+
+      // Clenched Giant Rubber Fist
+      const fistX = 8 + ext;
+      const fistY = torsoY + 8 + armCurveY;
+      ctx.fillStyle = '#ffcca0';
+      ctx.strokeStyle = '#212529';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(fistX + 6, fistY, action === 'PUNCH_3' ? 15 : 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Knuckle ridges
+      ctx.fillStyle = '#e29578';
+      ctx.beginPath();
+      ctx.arc(fistX + 16, fistY - 4, 4, 0, Math.PI * 2);
+      ctx.arc(fistX + 18, fistY + 1, 4.5, 0, Math.PI * 2);
+      ctx.arc(fistX + 16, fistY + 6, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Impact Shock Cone
+      ctx.strokeStyle = action === 'PUNCH_3' ? '#ff0055' : '#ffbe0b';
+      ctx.lineWidth = action === 'PUNCH_3' ? 3.5 : 2.5;
+      ctx.beginPath();
+      ctx.arc(fistX + 12, fistY, action === 'PUNCH_3' ? 24 : 16, -Math.PI * 0.45, Math.PI * 0.45);
+      ctx.stroke();
 
     } else if (action === 'AIR_ATTACK') {
-      // Gomu Gomu no Stamp / Aerial Kick (as in 5ZeINo_c7bc3d16.png)
-      // Extended stretched leg pointing downward with speed trail!
+      // Gomu Gomu no Stamp: Both legs stretched downward with giant soles stomping!
       ctx.fillStyle = '#ffcca0';
       ctx.strokeStyle = '#212529';
       ctx.lineWidth = 1.2;
@@ -1553,12 +1794,28 @@ export class SpriteRenderer {
       ctx.fillRect(8, torsoY - 8, 16, 7);
       ctx.strokeRect(8, torsoY - 8, 16, 7);
 
-      // Speed lines & impact swoop
-      ctx.strokeStyle = '#ffbe0b';
+      // Stretched rubber legs reaching downward with motion rings
+      ctx.fillRect(-8, torsoY + 22, 6, 38);
+      ctx.fillRect(2, torsoY + 22, 6, 38);
+
+      // Giant Straw Sandals / Soles stomping down
+      ctx.fillStyle = '#b08968';
+      ctx.beginPath();
+      ctx.ellipse(-5, torsoY + 62, 11, 6, 0, 0, Math.PI * 2);
+      ctx.ellipse(5, torsoY + 62, 11, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Downward conical speed thrust lines & impact shock rings
+      ctx.strokeStyle = 'rgba(255, 214, 10, 0.9)';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(-10, torsoY - 25);
-      ctx.lineTo(24, torsoY + 20);
+      ctx.arc(0, torsoY + 54, 18, 0, Math.PI);
+      ctx.stroke();
+      ctx.strokeStyle = '#ff0055';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, torsoY + 44, 24, 0, Math.PI);
       ctx.stroke();
 
     } else if (action === 'DASH') {
@@ -1805,71 +2062,151 @@ export class SpriteRenderer {
       ctx.arc(14, torsoY + 4, 85, 0, Math.PI * 2);
       ctx.stroke();
 
-    } else if (action === 'PUNCH_1') {
-      // Fast Horizontal Slash with Right Katana
-      const slashReach = 45;
+    } else if (action === 'VICTORY') {
+      // VICTORY POSE: Confident Swordsman Stance, Wado Ichimonji slung over shoulder, smirk
       ctx.fillStyle = '#ffcca0';
-      ctx.fillRect(8, torsoY + 2, 16, 7);
+      ctx.fillRect(6, torsoY - 8, 8, 20); // Right arm lifted
+      ctx.save();
+      ctx.translate(14, torsoY - 14);
+      ctx.rotate(-0.6);
+      ctx.fillStyle = '#ffffff'; // White hilt
+      ctx.fillRect(-2, -18, 4, 18);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(-4, -2, 8, 4);
+      ctx.fillStyle = '#f8fafc'; // Katana blade resting behind back
+      ctx.fillRect(-1.5, 2, 3, 55);
+      ctx.restore();
+
+      // Left hand resting on sheath
+      ctx.fillRect(-14, torsoY + 6, 10, 8);
+      ctx.fillStyle = '#15803d';
+      ctx.beginPath();
+      ctx.arc(-8, torsoY + 12, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Zoro's smirk
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(2, headY + 4);
+      ctx.lineTo(8, headY + 2);
+      ctx.stroke();
+
+      // Green Swordsman Spirit Aura Sparkles
+      const sparkTime = actionTimer * 6;
+      ctx.fillStyle = '#4ade80';
+      for (let sp = 0; sp < 4; sp++) {
+        const sx = Math.sin(sparkTime + sp * 1.5) * 22;
+        const sy = torsoY - 10 - ((sparkTime * 8 + sp * 20) % 50);
+        ctx.fillRect(sx, sy, 3, 3);
+      }
+
+    } else if (action === 'PUNCH_1') {
+      // Dynamic Horizontal Slash with Right Katana & Lunging Torso
+      const slashReach = 78;
+      ctx.fillStyle = '#ffcca0';
+      ctx.fillRect(10, torsoY + 2, 22, 8);
       
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(24, torsoY + 4, slashReach, 3.5);
+      // Steel Blade extending 78px
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(32, torsoY + 4, slashReach, 4);
       ctx.strokeStyle = '#64748b';
       ctx.lineWidth = 1;
-      ctx.strokeRect(24, torsoY + 4, slashReach, 3.5);
+      ctx.strokeRect(32, torsoY + 4, slashReach, 4);
 
+      // Gold Katana Guard
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(30, torsoY + 2, 3, 8);
+
+      // Sweeping Emerald Wind Crescent Arc
       ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(35, torsoY + 5, 30, -Math.PI * 0.35, Math.PI * 0.35);
+      ctx.arc(42, torsoY + 6, 52, -Math.PI * 0.45, Math.PI * 0.45);
+      ctx.stroke();
+      ctx.strokeStyle = '#bbf7d0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(44, torsoY + 6, 54, -Math.PI * 0.35, Math.PI * 0.35);
       ctx.stroke();
 
     } else if (action === 'PUNCH_2') {
-      // Upward Diagonal Slash with Left Katana
+      // Upward Diagonal Surging Slash with Left Katana
       ctx.fillStyle = '#ffcca0';
-      ctx.fillRect(6, torsoY + 2, 14, 7);
+      ctx.fillRect(8, torsoY, 20, 8);
 
       ctx.save();
-      ctx.translate(20, torsoY + 5);
-      ctx.rotate(-0.7);
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(0, -2, 50, 3.5);
+      ctx.translate(26, torsoY + 4);
+      ctx.rotate(-0.85);
+      // Katana Blade
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, -3, 85, 4.5);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, -3, 85, 4.5);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(-2, -6, 4, 10);
       ctx.restore();
 
+      // Giant Rising Crescent Arc
       ctx.strokeStyle = '#4ade80';
-      ctx.lineWidth = 3.5;
+      ctx.lineWidth = 4.5;
       ctx.beginPath();
-      ctx.arc(25, torsoY - 5, 32, -Math.PI * 0.5, Math.PI * 0.2);
+      ctx.arc(36, torsoY - 8, 62, -Math.PI * 0.55, Math.PI * 0.25);
+      ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(38, torsoY - 8, 64, -Math.PI * 0.45, Math.PI * 0.15);
       ctx.stroke();
 
     } else if (action === 'PUNCH_3') {
-      // SANTORYU CROSS SLASH (Both arms slashed out forward!)
+      // SANTORYU CROSS SLASH (Twin Katanas violently slashed outward)
       ctx.fillStyle = '#ffcca0';
-      ctx.fillRect(8, torsoY - 2, 22, 6);
-      ctx.fillRect(8, torsoY + 8, 22, 6);
+      ctx.fillRect(10, torsoY - 4, 26, 7);
+      ctx.fillRect(10, torsoY + 8, 26, 7);
 
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(30, torsoY - 8, 48, 3.5);
-      ctx.fillRect(30, torsoY + 12, 48, 3.5);
+      // Dual Extended Blades
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(36, torsoY - 12, 92, 4);
+      ctx.fillRect(36, torsoY + 14, 92, 4);
 
+      // Crossed Emerald Cutting Vortex
       ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.arc(45, torsoY + 5, 42, -Math.PI * 0.45, Math.PI * 0.45);
+      ctx.arc(55, torsoY + 3, 68, -Math.PI * 0.48, Math.PI * 0.48);
+      ctx.stroke();
+      ctx.strokeStyle = '#86efac';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(58, torsoY + 3, 72, -Math.PI * 0.38, Math.PI * 0.38);
       ctx.stroke();
 
+      // Impact Sparks
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(100, torsoY - 6, 6, 6);
+      ctx.fillRect(115, torsoY + 8, 5, 5);
+      ctx.fillRect(92, torsoY + 16, 4, 4);
+
     } else if (action === 'PISTOL') {
-      // FLYING SLASH (Iai / Wind Blade Projectile)
+      // FLYING SLASH (36-Pound Cannon / Sanjuuroku Pound Ho)
       ctx.fillStyle = '#ffcca0';
-      ctx.fillRect(6, torsoY + 2, 20, 7);
+      ctx.fillRect(8, torsoY + 2, 24, 7);
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(26, torsoY + 4, 52, 3.5);
+      ctx.fillRect(32, torsoY + 4, 75, 4);
 
-      const projX = 85 + actionTimer * 12;
+      const projX = 95 + (actionTimer % 1) * 35;
       ctx.strokeStyle = '#4ade80';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.arc(projX, torsoY + 5, 24, -Math.PI * 0.4, Math.PI * 0.4);
+      ctx.arc(projX, torsoY + 6, 34, -Math.PI * 0.42, Math.PI * 0.42);
+      ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(projX + 4, torsoY + 6, 36, -Math.PI * 0.32, Math.PI * 0.32);
       ctx.stroke();
 
     } else if (action === 'AIR_ATTACK') {
@@ -1878,21 +2215,31 @@ export class SpriteRenderer {
       ctx.fillRect(4, torsoY + 6, 12, 14);
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(8, torsoY + 20, 3.5, 45);
-      ctx.fillRect(14, torsoY + 20, 3.5, 45);
+      ctx.fillRect(8, torsoY + 20, 3.5, 55);
+      ctx.fillRect(16, torsoY + 20, 3.5, 55);
+
+      // Downward wind streaks
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(8, torsoY + 75);
+      ctx.lineTo(8, torsoY + 95);
+      ctx.moveTo(16, torsoY + 75);
+      ctx.lineTo(16, torsoY + 95);
+      ctx.stroke();
 
     } else if (action === 'DASH') {
       // Slicing dash
       ctx.fillStyle = '#ffcca0';
-      ctx.fillRect(6, torsoY + 4, 18, 6);
+      ctx.fillRect(6, torsoY + 4, 22, 6);
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(24, torsoY + 5, 40, 3.5);
+      ctx.fillRect(28, torsoY + 5, 60, 3.5);
     } else {
       // IDLE / WALK: Classic Santoryu Battle Stance
       ctx.fillStyle = '#ffcca0';
       ctx.fillRect(8, torsoY + 4, 10, 10);
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(16, torsoY + 6, 30, 3);
+      ctx.fillRect(16, torsoY + 6, 34, 3.5);
 
       ctx.fillStyle = '#ffcca0';
       ctx.fillRect(-8, torsoY + 4, 10, 10);
@@ -1900,7 +2247,7 @@ export class SpriteRenderer {
       ctx.translate(-4, torsoY + 6);
       ctx.rotate(-0.5);
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(-28, -1.5, 30, 3);
+      ctx.fillRect(-32, -1.5, 34, 3.5);
       ctx.restore();
     }
 
@@ -2017,6 +2364,171 @@ export class SpriteRenderer {
       }
     }
 
+    ctx.restore();
+  }
+
+  // ==========================================
+  // 2C2. MARINE ELITE HALBERD GUARD (AXE-HAND MORGAN'S ELITE)
+  // Longer reach halberd, fast thrust, golden shoulder epaulettes & navy officer cape!
+  // ==========================================
+  public static drawMarineElite(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    z: number,
+    facing: 1 | -1,
+    action: string,
+    actionTimer: number,
+    walkFrame: number
+  ) {
+    ctx.save();
+    ctx.translate(x, y - z);
+    ctx.scale(facing * 1.15, 1.15);
+
+    // Ground Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 26, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bounceY = action === 'WALK' ? Math.sin(walkFrame * 0.4) * 2 : 0;
+    const legSwing = action === 'WALK' ? Math.sin(walkFrame * 0.35) * 11 : 0;
+
+    // Dark Blue Officer Trousers & Polished Black Jackboots
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-11 - legSwing * 0.3, -26 + bounceY, 9, 26);
+    ctx.fillRect(2 + legSwing * 0.3, -26 + bounceY, 9, 26);
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(-12 - legSwing * 0.3, -8 + bounceY, 11, 8);
+    ctx.fillRect(2 + legSwing * 0.3, -8 + bounceY, 11, 8);
+
+    // Billowing Navy Officer Cape behind back
+    const capeFlutter = Math.sin(walkFrame * 0.3 + actionTimer * 8) * 6;
+    ctx.fillStyle = '#1e3a8a';
+    ctx.beginPath();
+    ctx.moveTo(-10, -50 + bounceY);
+    ctx.lineTo(-24 + capeFlutter, -20 + bounceY);
+    ctx.lineTo(-14 + capeFlutter, -6 + bounceY);
+    ctx.lineTo(-4, -40 + bounceY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#dc2626'; // Red cape inner lining
+    ctx.fillRect(-8, -48 + bounceY, 3, 20);
+
+    // Torso: Double-Breasted Navy Officer Coat with Golden Buttons
+    const torsoY = -52 + bounceY;
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-12, torsoY, 24, 26);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(-12, torsoY, 24, 26);
+
+    // Gold Double-Breasted Buttons & Belt Buckle
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-7, torsoY + 4, 3, 3);
+    ctx.fillRect(4, torsoY + 4, 3, 3);
+    ctx.fillRect(-7, torsoY + 11, 3, 3);
+    ctx.fillRect(4, torsoY + 11, 3, 3);
+    ctx.fillRect(-5, torsoY + 22, 10, 4);
+
+    // Golden Shoulder Epaulettes with Tassels
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-15, torsoY - 2, 7, 5);
+    ctx.fillRect(8, torsoY - 2, 7, 5);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-15, torsoY + 3, 7, 3);
+    ctx.fillRect(8, torsoY + 3, 7, 3);
+
+    // Head
+    const headY = torsoY - 12;
+    ctx.fillStyle = '#ffcca0';
+    ctx.beginPath();
+    ctx.arc(0, headY, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Intense Stern Eyes with scar
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(2, headY - 2, 3, 2);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(1, headY - 4, 1.5, 6);
+
+    // Peaked Officer Cap with Golden Navy Seagull Emblem
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-11, headY - 11, 22, 7);
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.ellipse(3, headY - 4, 14, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(0, headY - 8, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // --- MASSIVE STEEL HALBERD (POLEAXE) ---
+    ctx.save();
+    if (action === 'ATTACK_WINDUP') {
+      // Windup: Pulled far back, glistening with red danger spark
+      ctx.translate(-8, torsoY + 8);
+      ctx.rotate(-0.85);
+    } else if (action === 'ATTACK') {
+      // High-Speed Thrust Lunge: Halberd thrust deep forward!
+      ctx.translate(22, torsoY + 8);
+      ctx.rotate(0.05);
+    } else {
+      // Idle / Walk: Held diagonally across chest ready to strike
+      ctx.translate(6, torsoY + 6);
+      ctx.rotate(-0.45);
+    }
+
+    // Long Reinforced Wood & Steel Pole Shaft (85px length!)
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(-12, -3, 90, 5);
+    ctx.strokeStyle = '#451a03';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-12, -3, 90, 5);
+
+    // Steel Spear Tip Point
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(78, -0.5);
+    ctx.lineTo(102, -0.5);
+    ctx.lineTo(84, -6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(78, -0.5);
+    ctx.lineTo(102, -0.5);
+    ctx.lineTo(84, 5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Crescent Halberd Axe Blade
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(68, -12, 18, 0, Math.PI * 0.7);
+    ctx.lineTo(62, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Golden Blade Crossguard Collars
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(60, -5, 6, 9);
+
+    if (action === 'ATTACK') {
+      // Wind slice & thrust motion cone
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(85, -12);
+      ctx.lineTo(115, -1);
+      ctx.lineTo(85, 10);
+      ctx.stroke();
+    }
+
+    ctx.restore();
     ctx.restore();
   }
 
@@ -2508,6 +3020,244 @@ export class SpriteRenderer {
   }
 
   // ==========================================
+  // 4B. COBY (ALVIDA CHORE BOY / FUTURE MARINE)
+  // ==========================================
+  public static drawCoby(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    z: number,
+    facing: 1 | -1,
+    action: string = 'IDLE',
+    actionTimer: number = 0
+  ) {
+    ctx.save();
+    ctx.translate(x, y - z);
+    ctx.scale(facing * 0.95, 0.95);
+
+    // Ground Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 18, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bounce = Math.sin(actionTimer * 5) * 1.5;
+
+    // Small Brown Shorts & Shoes
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(-7, -18 + bounce, 6, 18);
+    ctx.fillRect(1, -18 + bounce, 6, 18);
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(-8, -4 + bounce, 8, 4);
+    ctx.fillRect(1, -4 + bounce, 8, 4);
+
+    // Light Blue Sailor/Chore Smock
+    const torsoY = -42 + bounce;
+    ctx.fillStyle = '#67e8f9';
+    ctx.fillRect(-9, torsoY, 18, 22);
+    ctx.strokeStyle = '#0891b2';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-9, torsoY, 18, 22);
+
+    // Red neckerchief
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(-4, torsoY);
+    ctx.lineTo(4, torsoY);
+    ctx.lineTo(0, torsoY + 7);
+    ctx.closePath();
+    ctx.fill();
+
+    // Head
+    const headY = torsoY - 12;
+    ctx.fillStyle = '#fed7aa';
+    ctx.beginPath();
+    ctx.arc(0, headY, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#292524';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Pink Center-Parted Hair (Iconic Coby)
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath();
+    ctx.arc(0, headY - 3, 12, Math.PI * 0.8, Math.PI * 2.2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-11, headY - 4);
+    ctx.lineTo(-7, headY + 5);
+    ctx.lineTo(-4, headY - 3);
+    ctx.lineTo(0, headY - 5);
+    ctx.lineTo(4, headY - 3);
+    ctx.lineTo(7, headY + 5);
+    ctx.lineTo(11, headY - 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Round Wire Spectacles / Glasses
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.beginPath();
+    ctx.arc(-4, headY, 4, 0, Math.PI * 2);
+    ctx.arc(4, headY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-0.5, headY);
+    ctx.lineTo(0.5, headY);
+    ctx.stroke();
+
+    // Eyes behind glasses
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(-4, headY, 1.5, 0, Math.PI * 2);
+    ctx.arc(4, headY, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Action Poses
+    if (action === 'ATTACK' || action === 'SALUTE') {
+      // Proud, determined Navy Salute
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(8, torsoY + 2, 6, 8);
+      ctx.fillRect(8, headY - 2, 8, 4);
+    } else if (action === 'VICTORY') {
+      // Tears of joy, pumping fist high
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(-4, torsoY - 14, 8, 16);
+      ctx.beginPath();
+      ctx.arc(0, torsoY - 16, 5, 0, Math.PI * 2);
+      ctx.fill();
+      // Tear streaks
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-5, headY + 4, 2, 4);
+      ctx.fillRect(3, headY + 4, 2, 4);
+    } else {
+      // IDLE: Holding wooden chore broom
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(8, torsoY + 6, 6, 12);
+      ctx.fillStyle = '#a16207';
+      ctx.fillRect(12, torsoY - 10, 3, 46);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(8, torsoY + 34, 11, 7);
+    }
+
+    ctx.restore();
+  }
+
+  // ==========================================
+  // 4C. HELMEPPO (SPOILED NAVY COLONEL'S SON)
+  // ==========================================
+  public static drawHelmeppo(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    z: number,
+    facing: 1 | -1,
+    action: string = 'IDLE',
+    actionTimer: number = 0
+  ) {
+    ctx.save();
+    ctx.translate(x, y - z);
+    ctx.scale(facing * 1.1, 1.1);
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 22, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bounce = Math.sin(actionTimer * 4) * 1.2;
+
+    // White Trousers & Fancy Violet Pointed Shoes
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-9, -24 + bounce, 8, 24);
+    ctx.fillRect(2, -24 + bounce, 8, 24);
+    ctx.fillStyle = '#7c3aed';
+    ctx.fillRect(-11, -5 + bounce, 11, 5);
+    ctx.fillRect(2, -5 + bounce, 11, 5);
+
+    // Aristocratic Purple & Gold Doublet Coat
+    const torsoY = -52 + bounce;
+    ctx.fillStyle = '#8b5cf6';
+    ctx.fillRect(-11, torsoY, 22, 26);
+    ctx.strokeStyle = '#5b21b6';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(-11, torsoY, 22, 26);
+
+    // Golden Frog Fasteners
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-3, torsoY + 4, 6, 2.5);
+    ctx.fillRect(-3, torsoY + 11, 6, 2.5);
+    ctx.fillRect(-3, torsoY + 18, 6, 2.5);
+
+    // Head with Characteristic Cleft Chin
+    const headY = torsoY - 14;
+    ctx.fillStyle = '#fed7aa';
+    ctx.beginPath();
+    ctx.arc(0, headY, 11.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#292524';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Arrogant Cleft Chin indent
+    ctx.fillStyle = '#ca8a04';
+    ctx.fillRect(-1, headY + 8, 2, 3);
+
+    // Ridiculous Purple Bowl-Cut Hair
+    ctx.fillStyle = '#a855f7';
+    ctx.beginPath();
+    ctx.arc(0, headY - 4, 13, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.fill();
+    ctx.fillRect(-12, headY - 7, 24, 7);
+    // Center part
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(-1, headY - 8, 2, 6);
+
+    // Smug sneering face
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(2, headY - 2, 3, 2);
+    ctx.beginPath();
+    ctx.moveTo(1, headY + 4);
+    ctx.lineTo(7, headY + 2);
+    ctx.strokeStyle = '#7c2d12';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Action Poses
+    if (action === 'ATTACK') {
+      // Threatening with golden flintlock pistol
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(6, torsoY + 4, 18, 6);
+      ctx.fillStyle = '#fbbf24'; // Golden pistol
+      ctx.fillRect(22, torsoY + 3, 14, 5);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(20, torsoY + 6, 5, 8);
+      // Muzzle spark
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(38, torsoY + 5, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (action === 'VICTORY') {
+      // Arrogant head thrown back, hands on hips
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(-14, torsoY + 6, 6, 12);
+      ctx.fillRect(8, torsoY + 6, 6, 12);
+    } else {
+      // IDLE: Smug holding gun by side
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(8, torsoY + 4, 6, 12);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(10, torsoY + 12, 10, 4);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(9, torsoY + 14, 4, 6);
+    }
+
+    ctx.restore();
+  }
+
+  // ==========================================
   // 5. OAK BARREL, MEAT & BERRIES
   // ==========================================
   public static drawBarrel(
@@ -2616,7 +3366,7 @@ export class SpriteRenderer {
     ctx.restore();
   }
 
-  public static drawCoby(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  public static drawCobyCheering(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
     ctx.save();
     ctx.translate(x, y);
 
@@ -3111,5 +3861,987 @@ export class SpriteRenderer {
 
     ctx.restore();
   }
+
+  // ==========================================
+  // 15. STUNNED ENEMY DIZZY STARS & FX
+  // ==========================================
+  public static drawStunnedStars(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    time: number
+  ) {
+    ctx.save();
+    // Halo ellipse above head
+    const haloY = y - 58;
+    ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(x, haloY, 20, 6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 3 circling cartoon stars
+    for (let i = 0; i < 3; i++) {
+      const angle = time * 7 + (i * (Math.PI * 2 / 3));
+      const starX = x + Math.cos(angle) * 18;
+      const starY = haloY + Math.sin(angle) * 6;
+
+      ctx.fillStyle = i === 0 ? '#fde047' : i === 1 ? '#f59e0b' : '#ffffff';
+      ctx.beginPath();
+      // Draw 4-point comic star
+      const s = 4.5;
+      ctx.moveTo(starX, starY - s);
+      ctx.lineTo(starX + s * 0.35, starY - s * 0.35);
+      ctx.lineTo(starX + s, starY);
+      ctx.lineTo(starX + s * 0.35, starY + s * 0.35);
+      ctx.lineTo(starX, starY + s);
+      ctx.lineTo(starX - s * 0.35, starY + s * 0.35);
+      ctx.lineTo(starX - s, starY);
+      ctx.lineTo(starX - s * 0.35, starY - s * 0.35);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // "STUN!" Arcade badge
+    ctx.font = '900 9px sans-serif';
+    ctx.fillStyle = '#fde047';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.5;
+    ctx.strokeText('STUNNED!', x, haloY - 9);
+    ctx.fillText('STUNNED!', x, haloY - 9);
+
+    ctx.restore();
+  }
+
+  // ==========================================
+  // 16. DYNAMIC WEATHER PARTICLES (ALVIDA'S SHIP)
+  // Ocean Sea Spray, Horizon Sea Mist, Diagonal Rain & Deck Ripples
+  // ==========================================
+  public static drawOceanWeatherParticles(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    time: number,
+    camX: number
+  ) {
+    ctx.save();
+
+    // 1. Billowing Sea Mist Puffs along Ocean Horizon
+    const seaY = height * 0.44;
+    for (let i = 0; i < 6; i++) {
+      const mistSpeed = (i + 1) * 12;
+      const mistX = ((time * mistSpeed + i * 220 - camX * 0.15) % (width + 300)) - 100;
+      const mistY = seaY + Math.sin(time * 1.5 + i * 1.7) * 8;
+      const mistRad = 55 + (i % 3) * 20;
+
+      const grad = ctx.createRadialGradient(mistX, mistY, 5, mistX, mistY, mistRad);
+      grad.addColorStop(0, 'rgba(224, 242, 254, 0.22)');
+      grad.addColorStop(0.6, 'rgba(186, 230, 253, 0.12)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(mistX, mistY, mistRad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 2. Ocean Sea Spray (Frothy droplets bursting over railing)
+    const railY = height * 0.50;
+    for (let s = 0; s < 18; s++) {
+      const sprayCycle = (time * 2.2 + s * 0.45) % 1.0;
+      const baseX = ((s * 75 - camX * 0.3) % (width + 120)) - 60;
+      const sprayX = baseX + Math.sin(s * 3.1) * 22 + sprayCycle * 14;
+      const sprayY = railY - Math.sin(sprayCycle * Math.PI) * (26 + (s % 4) * 8);
+      const sprayAlpha = (1 - sprayCycle) * 0.65;
+
+      ctx.fillStyle = `rgba(240, 249, 255, ${sprayAlpha})`;
+      ctx.beginPath();
+      ctx.arc(sprayX, sprayY, 1.8 + (s % 3) * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Diagonal High-Speed East Blue Rain Streaks
+    ctx.strokeStyle = 'rgba(224, 242, 254, 0.42)';
+    ctx.lineWidth = 1.4;
+    const rainCount = 45;
+    for (let r = 0; r < rainCount; r++) {
+      const speed = 420 + (r % 5) * 60;
+      const rx = ((r * 32 + time * 140 - camX * 0.2) % (width + 120)) - 60;
+      const ry = ((r * 47 + time * speed) % (height + 80)) - 40;
+      const len = 16 + (r % 4) * 6;
+
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx - len * 0.4, ry + len);
+      ctx.stroke();
+    }
+
+    // 4. Expanding Water Splash Ripples on Deck Floorboards
+    const deckY = height * 0.58;
+    for (let p = 0; p < 8; p++) {
+      const ripPhase = (time * 1.8 + p * 0.38) % 1.0;
+      const ripX = ((p * 145 + 35 - camX * 0.6) % (width + 80)) - 40;
+      const ripY = deckY + 18 + (p % 5) * 18;
+      const rx = ripPhase * 18;
+      const ry = ripPhase * 6;
+      const ripAlpha = (1 - ripPhase) * 0.55;
+
+      ctx.strokeStyle = `rgba(255, 255, 255, ${ripAlpha})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(ripX, ripY, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  // ==========================================
+  // 17. ACROBAT KNIFE JUGGLER (BUGGY CIRCUS CREW)
+  // Agile tumbler with teardrop face paint, jester collar & 3 thrown daggers
+  // ==========================================
+  public static drawAcrobatClown(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    z: number,
+    facing: 1 | -1,
+    action: string,
+    actionTimer: number,
+    walkFrame: number
+  ) {
+    ctx.save();
+    ctx.translate(x, y - z);
+    ctx.scale(facing, 1);
+
+    // Ground Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, z, 20, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const isBackflipping = action === 'JUGGLE' || action === 'ATTACK';
+    const isHit = action === 'HIT' || action === 'KNOCKBACK';
+
+    if (isBackflipping) {
+      // Dynamic mid-air backflip rotation
+      const flipRot = actionTimer * Math.PI * 3.5;
+      ctx.rotate(-flipRot);
+    }
+
+    if (isHit) {
+      ctx.rotate(0.35);
+    }
+
+    // Striped Circus Legs (Red & White Candy Cane pattern)
+    const legOffset = Math.sin(walkFrame * 0.4) * 6;
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-10 + legOffset, -22, 7, 22);
+    ctx.fillRect(3 - legOffset, -22, 7, 22);
+
+    // White candy stripes on legs
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-10 + legOffset, -18, 7, 4);
+    ctx.fillRect(-10 + legOffset, -10, 7, 4);
+    ctx.fillRect(3 - legOffset, -18, 7, 4);
+    ctx.fillRect(3 - legOffset, -10, 7, 4);
+
+    // Pointed Curled Jester Shoes (Yellow with Gold Pompom)
+    ctx.fillStyle = '#eab308';
+    ctx.beginPath();
+    ctx.moveTo(-11 + legOffset, -3);
+    ctx.lineTo(-2 + legOffset, -3);
+    ctx.lineTo(3 + legOffset, 0);
+    ctx.lineTo(-12 + legOffset, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(2 - legOffset, -3);
+    ctx.lineTo(11 - legOffset, -3);
+    ctx.lineTo(15 - legOffset, 0);
+    ctx.lineTo(1 - legOffset, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Body: Striped Violet & Crimson Leotard
+    ctx.fillStyle = '#9333ea';
+    ctx.fillRect(-12, -44, 24, 24);
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-6, -44, 12, 24);
+
+    // Wide Gold Acrobat Belt
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-13, -24, 26, 6);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-3, -24, 6, 6); // buckle
+
+    // Pointy Clown Collar (Triangles with gold bells)
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.moveTo(-14, -44);
+    ctx.lineTo(-8, -36);
+    ctx.lineTo(-2, -44);
+    ctx.lineTo(4, -36);
+    ctx.lineTo(10, -44);
+    ctx.lineTo(14, -44);
+    ctx.lineTo(0, -48);
+    ctx.closePath();
+    ctx.fill();
+
+    // Head with Clown Face Paint
+    const headY = -56;
+    ctx.fillStyle = '#ffffff'; // White clown greasepaint
+    ctx.beginPath();
+    ctx.arc(0, headY, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Blue Teardrop under left eye & blue diamonds on eyes
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.moveTo(-4, headY - 5);
+    ctx.lineTo(-2, headY);
+    ctx.lineTo(-6, headY);
+    ctx.closePath();
+    ctx.fill();
+    // Teardrop
+    ctx.beginPath();
+    ctx.arc(-4, headY + 5, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Red clown smile
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(0, headY + 3, 5, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    // Small red round nose
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(0, headY + 1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Two-Horned Jester Hat (Purple & Red) with Bells
+    ctx.fillStyle = '#7e22ce';
+    ctx.beginPath();
+    ctx.moveTo(-10, headY - 8);
+    ctx.quadraticCurveTo(-18, headY - 20, -16, headY - 26);
+    ctx.lineTo(-2, headY - 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(10, headY - 8);
+    ctx.quadraticCurveTo(18, headY - 20, 16, headY - 26);
+    ctx.lineTo(2, headY - 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Gold jingle bells on hat tips
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(-16, headY - 26, 3, 0, Math.PI * 2);
+    ctx.arc(16, headY - 26, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Arms & Juggling Arc
+    if (isBackflipping) {
+      // Juggling 3 spinning daggers overhead in an arc!
+      for (let k = 0; k < 3; k++) {
+        const daggerAngle = actionTimer * 12 + (k * (Math.PI * 2 / 3));
+        const dagX = Math.cos(daggerAngle) * 32;
+        const dagY = headY - 20 + Math.sin(daggerAngle) * 18;
+        SpriteRenderer.drawJugglerDagger(ctx, dagX, dagY, daggerAngle * 2);
+      }
+    } else {
+      // Holding 2 daggers ready
+      ctx.fillStyle = '#ffedd5';
+      ctx.fillRect(8, -38, 8, 5);
+      SpriteRenderer.drawJugglerDagger(ctx, 16, -40, -0.4);
+      ctx.fillRect(-16, -38, 8, 5);
+      SpriteRenderer.drawJugglerDagger(ctx, -20, -40, 2.6);
+    }
+
+    ctx.restore();
+  }
+
+  // ==========================================
+  // 18. UNICYCLE CLOWN SWORD FIGHTER (BUGGY CIRCUS CREW)
+  // Chrome monocycle, big orange afro, spinning dual pirate cutlasses
+  // ==========================================
+  public static drawUnicycleClown(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    z: number,
+    facing: 1 | -1,
+    action: string,
+    actionTimer: number,
+    walkFrame: number
+  ) {
+    ctx.save();
+    ctx.translate(x, y - z);
+    ctx.scale(facing, 1);
+
+    // Unicycle Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, z, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const isSpinning = action === 'ATTACK' || action === 'SPIN';
+    const isHit = action === 'HIT' || action === 'KNOCKBACK';
+
+    if (isHit) {
+      ctx.rotate(0.3);
+    }
+
+    // 1. UNICYCLE TIRE & FORK
+    const wheelY = -12;
+    const wheelRad = 12;
+    const wheelSpin = walkFrame * 0.8;
+
+    // Black rubber tire
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, wheelY, wheelRad, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Chrome Spokes
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1.2;
+    for (let sp = 0; sp < 6; sp++) {
+      const angle = wheelSpin + (sp * Math.PI / 3);
+      ctx.beginPath();
+      ctx.moveTo(0, wheelY);
+      ctx.lineTo(Math.cos(angle) * wheelRad, wheelY + Math.sin(angle) * wheelRad);
+      ctx.stroke();
+    }
+
+    // Chrome Pedal Crank
+    const pedalAngle = wheelSpin * 1.5;
+    const crankLen = 8;
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(pedalAngle) * crankLen, wheelY + Math.sin(pedalAngle) * crankLen);
+    ctx.lineTo(-Math.cos(pedalAngle) * crankLen, wheelY - Math.sin(pedalAngle) * crankLen);
+    ctx.stroke();
+
+    // Chrome Frame Post & Saddle
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-2, -38, 4, 26);
+    // Saddle
+    ctx.fillStyle = '#7c2d12';
+    ctx.beginPath();
+    ctx.ellipse(0, -38, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. CLOWN LEGS & PEDALING
+    ctx.fillStyle = '#16a34a'; // Green tights
+    ctx.fillRect(-8, -38, 6, 20);
+    ctx.fillRect(2, -38, 6, 20);
+    // Big floppy clown shoes (Purple)
+    ctx.fillStyle = '#9333ea';
+    ctx.fillRect(-12, -22, 12, 6);
+    ctx.fillRect(2, -22, 12, 6);
+
+    // 3. CLOWN BODY: Polka Dot Jumpsuit (Yellow with red dots)
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(-14, -62, 28, 26);
+    // Red Polka Dots
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.arc(-8, -55, 3, 0, Math.PI * 2);
+    ctx.arc(6, -56, 3.2, 0, Math.PI * 2);
+    ctx.arc(-2, -45, 3, 0, Math.PI * 2);
+    ctx.arc(7, -42, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ruffled Neck Collar (Aqua Teal)
+    ctx.fillStyle = '#06b6d4';
+    ctx.beginPath();
+    ctx.ellipse(0, -64, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. CLOWN HEAD & BUSHY ORANGE AFRO
+    const headY = -78;
+    // Giant Orange Afro Wig
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath();
+    ctx.arc(-13, headY - 6, 12, 0, Math.PI * 2);
+    ctx.arc(13, headY - 6, 12, 0, Math.PI * 2);
+    ctx.arc(0, headY - 14, 14, 0, Math.PI * 2);
+    ctx.arc(-8, headY + 2, 8, 0, Math.PI * 2);
+    ctx.arc(8, headY + 2, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // White Makeup Face
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, headY, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Big Blue Nose
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.arc(0, headY + 1, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wide Red Lipstick Smile & Clown Eyes
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, headY + 4, 5, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+
+    ctx.fillStyle = '#1e1b4b';
+    ctx.fillRect(-4, headY - 3, 2, 3);
+    ctx.fillRect(2, headY - 3, 2, 3);
+
+    // Mini bowler hat on afro
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-6, headY - 24, 12, 7);
+    ctx.fillRect(-10, headY - 17, 20, 2);
+
+    // 5. TWIN CUTLASSES
+    if (isSpinning) {
+      // Spinning cyclone whirlwind trail around clown!
+      const spinRot = actionTimer * 28;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(0, headY + 16, 48, 14, spinRot, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Flashing silver blades
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(Math.cos(spinRot) * 36 - 6, headY + 14, 28, 4);
+      ctx.fillRect(-Math.cos(spinRot) * 36 - 6, headY + 14, 28, 4);
+    } else {
+      // Dual swords held in ready stance
+      ctx.fillStyle = '#94a3b8';
+      // Right hand sword
+      ctx.fillRect(12, -62, 24, 4);
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(10, -64, 4, 8); // guard
+      // Left hand sword
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-32, -62, 24, 4);
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(-12, -64, 4, 8);
+    }
+
+    ctx.restore();
+  }
+
+  // ==========================================
+  // 19. CAPTAIN BUGGY THE CLOWN (STAGE 7 BOSS)
+  // Big Red Nose, Captain Bicorne, Blue Hair, Bara Bara Split Power!
+  // ==========================================
+  public static drawBuggy(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    z: number,
+    facing: 1 | -1,
+    action: string,
+    actionTimer: number,
+    walkFrame: number
+  ) {
+    ctx.save();
+    ctx.translate(x, y - z);
+    ctx.scale(facing, 1);
+
+    // Boss Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.beginPath();
+    ctx.ellipse(0, z, 32, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Scale up Buggy for dramatic boss scale (1.35x)
+    ctx.scale(1.35, 1.35);
+
+    const isSplit = action === 'SPLIT' || action === 'ATTACK' || action === 'SPECIAL';
+    const isHit = action === 'HIT' || action === 'KNOCKBACK';
+    const isLaughing = action === 'IDLE' || action === 'BOSS_INTRO';
+
+    if (isHit) {
+      ctx.rotate(0.2);
+    }
+
+    // 1. LEGS & POINTY BROWN CAPTAIN BOOTS
+    const walkBob = Math.sin(walkFrame * 0.5) * 4;
+    ctx.fillStyle = '#1e3a8a'; // Blue baggy trousers
+    ctx.fillRect(-12, -26, 10, 26);
+    ctx.fillRect(2, -26, 10, 26);
+
+    // Brown pirate cuffed boots
+    ctx.fillStyle = '#5c2d10';
+    ctx.fillRect(-14, -14, 12, 14);
+    ctx.fillRect(2, -14, 12, 14);
+    ctx.fillStyle = '#b45309';
+    ctx.fillRect(-15, -14, 14, 4); // cuffs
+    ctx.fillRect(1, -14, 14, 4);
+
+    // 2. ORANGE / YELLOW STRIPED CAPTAIN'S COAT & GREEN SASH
+    // Flapping Captain Coat Back Tails
+    const coatFlutter = Math.sin(actionTimer * 8 + walkFrame * 0.3) * 6;
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath();
+    ctx.moveTo(-16, -55);
+    ctx.lineTo(-24 - coatFlutter, -16);
+    ctx.lineTo(-12, -22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(16, -55);
+    ctx.lineTo(24 + coatFlutter, -16);
+    ctx.lineTo(12, -22);
+    ctx.closePath();
+    ctx.fill();
+
+    // Torso: Red & White horizontal striped shirt
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-14, -55, 28, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-14, -50, 28, 5);
+    ctx.fillRect(-14, -40, 28, 5);
+    ctx.fillRect(-14, -30, 28, 5);
+
+    // Green Waist Sash
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(-15, -28, 30, 8);
+    // Knotted sash dangling
+    ctx.fillRect(-14, -20, 6, 14);
+
+    // 3. CAPTAIN'S ORANGE OVERCOAT (Draped over shoulders like an admiral/emperor)
+    ctx.fillStyle = '#ea580c';
+    ctx.fillRect(-18, -58, 6, 34);
+    ctx.fillRect(12, -58, 6, 34);
+    // Gold epaulets on shoulders
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-20, -59, 10, 5);
+    ctx.fillRect(10, -59, 10, 5);
+    // Gold tassels
+    ctx.fillStyle = '#fbbf24';
+    for (let ep = -19; ep <= -11; ep += 3) ctx.fillRect(ep, -54, 2, 4);
+    for (let ep = 11; ep <= 19; ep += 3) ctx.fillRect(ep, -54, 2, 4);
+
+    // 4. BUGGY'S ICONIC HEAD, NOSE & BICORNE HAT
+    const headY = -72 + walkBob;
+
+    // Long Flowing Royal Blue Hair (Twin Ponytails coming out of hat)
+    ctx.fillStyle = '#1d4ed8';
+    ctx.beginPath();
+    ctx.moveTo(-12, headY - 4);
+    ctx.quadraticCurveTo(-26, headY + 12 + coatFlutter, -22, headY + 28);
+    ctx.lineTo(-14, headY + 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(12, headY - 4);
+    ctx.quadraticCurveTo(26, headY + 12 + coatFlutter, 22, headY + 28);
+    ctx.lineTo(14, headY + 18);
+    ctx.closePath();
+    ctx.fill();
+
+    // Face & Chin
+    ctx.fillStyle = '#ffedd5';
+    ctx.beginPath();
+    ctx.arc(0, headY, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Clown Makeup: Green crossbone crossed markings on cheek/eyes
+    ctx.fillStyle = '#16a34a';
+    ctx.beginPath();
+    ctx.moveTo(-6, headY - 8);
+    ctx.lineTo(-2, headY);
+    ctx.lineTo(-8, headY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(6, headY - 8);
+    ctx.lineTo(8, headY);
+    ctx.lineTo(2, headY);
+    ctx.closePath();
+    ctx.fill();
+
+    // BUGGY'S FAMOUS BIG RED NOSE (HIS PRIDE & JOY!)
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.arc(0, headY + 1, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#7f1d1d';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // Shiny nose highlight
+    ctx.fillStyle = '#fca5a5';
+    ctx.beginPath();
+    ctx.arc(-1.5, headY - 1, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wide Grinning Clown Mouth (Showcasing sharp teeth)
+    if (isLaughing) {
+      ctx.fillStyle = '#881337';
+      ctx.beginPath();
+      ctx.arc(0, headY + 6, 7, 0, Math.PI);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-5, headY + 6, 10, 3); // White teeth
+    } else {
+      ctx.strokeStyle = '#881337';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, headY + 7, 6, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+    }
+
+    // Pirate Bicorne Hat (Black with Gold Trim & Crossed Bones)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.moveTo(-24, headY - 10);
+    ctx.quadraticCurveTo(0, headY - 32, 24, headY - 10);
+    ctx.quadraticCurveTo(0, headY - 18, -24, headY - 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Gold Bicorne Trim
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Buggy's Jolly Roger on Bicorne (Clown skull with red nose)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, headY - 19, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#dc2626'; // Little red nose on hat skull
+    ctx.beginPath();
+    ctx.arc(0, headY - 18, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    // Crossed bones
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-6, headY - 24);
+    ctx.lineTo(6, headY - 14);
+    ctx.moveTo(6, headY - 24);
+    ctx.lineTo(-6, headY - 14);
+    ctx.stroke();
+
+    // 5. BARA BARA NO MI DETACHED HANDS / CHOP COMBAT
+    if (isSplit) {
+      // Floating detached hands flying forward independently!
+      const floatX = 38 + Math.sin(actionTimer * 14) * 8;
+      const floatY = headY + 8 + Math.cos(actionTimer * 12) * 12;
+
+      // Bara Bara Blue energy sparks around wrist separation
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      for (let b = 0; b < 4; b++) {
+        const sparkAngle = actionTimer * 18 + b * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(14, -48);
+        ctx.lineTo(14 + Math.cos(sparkAngle) * 8, -48 + Math.sin(sparkAngle) * 8);
+        ctx.stroke();
+      }
+
+      // Detached Flying Hand with 4 Daggers!
+      SpriteRenderer.drawBuggyChop(ctx, floatX, floatY, 1, actionTimer);
+    } else {
+      // Hands resting on hips or holding daggers
+      ctx.fillStyle = '#ffffff'; // White gloves
+      ctx.fillRect(-22, -45, 8, 8);
+      ctx.fillRect(14, -45, 8, 8);
+
+      // 4 Daggers sticking out between fingers in right hand
+      ctx.fillStyle = '#94a3b8';
+      for (let d = 0; d < 4; d++) {
+        const dagSpread = (d - 1.5) * 4;
+        ctx.fillRect(20, -50 + dagSpread, 16, 2.5);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  // Helper: Detached Flying Bara Bara Hand with 4 Razor Knives
+  public static drawBuggyChop(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    facing: number,
+    time: number
+  ) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(facing, 1);
+
+    // Blue Electrical Aura around detached fist
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // White pirate glove fist
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-8, -7, 16, 14);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(-8, -7, 16, 14);
+
+    // 4 Gleaming Silver Circus Daggers between fingers
+    for (let d = 0; d < 4; d++) {
+      const angle = (d - 1.5) * 0.22;
+      ctx.save();
+      ctx.translate(6, (d - 1.5) * 5);
+      ctx.rotate(angle);
+
+      // Silver blade
+      ctx.fillStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.moveTo(0, -2);
+      ctx.lineTo(24, -1);
+      ctx.lineTo(28, 0);
+      ctx.lineTo(24, 1);
+      ctx.lineTo(0, 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Blade shine
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(4, -1, 18, 1);
+
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  // ==========================================
+  // 20. DESTRUCTIBLE CARNIVAL BARRICADE (METAL SLUG STYLE)
+  // Fortified Circus Barricade / Clown Cannon Wagon
+  // ==========================================
+  public static drawCarnivalBarricade(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    hp: number,
+    maxHp: number,
+    isCracked: boolean,
+    isWagon: boolean,
+    time: number
+  ) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Ground Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, isWagon ? 46 : 38, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (isWagon) {
+      // CLOWN CANNON WAGON
+      // Heavy Spoked Wagon Wheels with Red/White Circus Stripes
+      const wheelRad = 22;
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.arc(-26, -wheelRad, wheelRad, 0, Math.PI * 2);
+      ctx.arc(26, -wheelRad, wheelRad, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Wagon Body (Deep Blue Wood with Gold Trim)
+      ctx.fillStyle = '#1e3a8a';
+      ctx.fillRect(-36, -55, 72, 36);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(-36, -55, 72, 36);
+
+      // Buggy Skull Insignia on Wagon Body
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, -38, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#dc2626'; // Red Nose
+      ctx.beginPath();
+      ctx.arc(0, -36, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Giant Bronze Buggy Cannon Barrel
+      const barrelGrad = ctx.createLinearGradient(-30, -75, 45, -75);
+      barrelGrad.addColorStop(0, '#78350f');
+      barrelGrad.addColorStop(0.5, '#b45309');
+      barrelGrad.addColorStop(1, '#d97706');
+      ctx.fillStyle = barrelGrad;
+      ctx.beginPath();
+      ctx.moveTo(-16, -55);
+      ctx.lineTo(38, -68);
+      ctx.lineTo(38, -50);
+      ctx.lineTo(-16, -42);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#451a03';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Sizzling Fuse on Cannon
+      const fuseSpark = Math.sin(time * 30) * 3;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-14, -54);
+      ctx.lineTo(-24, -68 + fuseSpark);
+      ctx.stroke();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(-24, -68 + fuseSpark, 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // FORTIFIED CARNIVAL WOODEN BARRICADE
+      const barW = 68;
+      const barH = 75;
+
+      // Heavy Timber Posts
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-barW / 2, -barH, 14, barH);
+      ctx.fillRect(barW / 2 - 14, -barH, 14, barH);
+
+      // Cross Beams with Red and White Circus Diagonal Warning Stripes
+      const beamGrad = ctx.createLinearGradient(-barW / 2, 0, barW / 2, 0);
+      beamGrad.addColorStop(0, '#b91c1c');
+      beamGrad.addColorStop(1, '#991b1b');
+      ctx.fillStyle = beamGrad;
+      ctx.fillRect(-barW / 2, -barH + 12, barW, 20);
+      ctx.fillRect(-barW / 2, -barH + 42, barW, 22);
+
+      // Diagonal White Stripes
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      for (let st = -barW / 2; st < barW / 2; st += 14) {
+        ctx.beginPath();
+        ctx.moveTo(st, -barH + 12);
+        ctx.lineTo(st + 8, -barH + 32);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(st, -barH + 42);
+        ctx.lineTo(st + 8, -barH + 64);
+        ctx.stroke();
+      }
+
+      // Spiked Wooden Stakes pointing forward
+      ctx.fillStyle = '#451a03';
+      for (let sp = -22; sp <= 22; sp += 14) {
+        ctx.beginPath();
+        ctx.moveTo(sp - 4, -28);
+        ctx.lineTo(sp, -12);
+        ctx.lineTo(sp + 4, -28);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Iron Studs & Reinforcement Brackets
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(-barW / 2 - 2, -barH + 8, 6, 28);
+      ctx.fillRect(barW / 2 - 4, -barH + 8, 6, 28);
+      ctx.fillRect(-barW / 2 - 2, -barH + 38, 6, 30);
+      ctx.fillRect(barW / 2 - 4, -barH + 38, 6, 30);
+    }
+
+    // Damage Cracks & Splinters
+    if (isCracked || hp < maxHp) {
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-16, -60);
+      ctx.lineTo(-4, -48);
+      ctx.lineTo(8, -52);
+      ctx.lineTo(18, -32);
+      ctx.stroke();
+
+      // Splinters flying
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(-12, -45, 4, 8);
+      ctx.fillRect(10, -50, 6, 3);
+    }
+
+    // Metal Slug Style Barricade HP Bar Overhead
+    const barWidth = 64;
+    const barHeight = 6;
+    const hpRatio = Math.max(0, hp / maxHp);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(-barWidth / 2 - 1, -88, barWidth + 2, barHeight + 2);
+
+    const hpGrad = ctx.createLinearGradient(-barWidth / 2, 0, barWidth / 2, 0);
+    hpGrad.addColorStop(0, '#ef4444');
+    hpGrad.addColorStop(0.5, '#f59e0b');
+    hpGrad.addColorStop(1, '#22c55e');
+    ctx.fillStyle = hpGrad;
+    ctx.fillRect(-barWidth / 2, -87, barWidth * hpRatio, barHeight);
+
+    // Label
+    ctx.font = '900 8px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    const title = isWagon ? 'BUGGY CANNON' : 'BARRICADE';
+    ctx.strokeText(title, 0, -92);
+    ctx.fillText(title, 0, -92);
+
+    ctx.restore();
+  }
+
+  // Helper: Spinning Juggler Dagger
+  public static drawJugglerDagger(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    rotation: number
+  ) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+
+    // Curved Silver Blade
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(0, -2);
+    ctx.lineTo(14, -4);
+    ctx.lineTo(20, 0);
+    ctx.lineTo(14, 4);
+    ctx.lineTo(0, 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Metallic Shine
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(4, -1, 10, 1.5);
+
+    // Golden Hilt & Red Pommel Tassel
+    ctx.fillStyle = '#d97706';
+    ctx.fillRect(-4, -3, 4, 6);
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-8, -1.5, 4, 3);
+
+    ctx.restore();
+  }
 }
+
 

@@ -351,7 +351,7 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({
                 </span>
               </button>
 
-              {/* SPECIAL BUTTON (GATLING OR ONI GIRI) */}
+              {/* SPECIAL BUTTON (GATLING / ONI GIRI / COMBO FINISHER) */}
               <button
                 onTouchStart={(e) => {
                   e.preventDefault();
@@ -363,8 +363,10 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({
                 }}
                 onMouseDown={() => triggerAction('special', 'justSpecial')}
                 onMouseUp={() => releaseAction('special')}
-                className={`relative w-15 h-15 sm:w-17 sm:h-17 rounded-full border-3 shadow-2xl flex flex-col items-center justify-center transition-all active:scale-90 ${
-                  energy >= 40
+                className={`relative w-15 h-15 sm:w-17 sm:h-17 rounded-full border-3 shadow-2xl flex flex-col items-center justify-center transition-all active:scale-95 cursor-pointer ${
+                  engine?.finisherReady
+                    ? 'bg-gradient-to-b from-amber-400 via-red-600 to-rose-950 border-yellow-300 text-white scale-110 animate-bounce shadow-[0_0_30px_rgba(239,68,68,0.95),0_0_15px_rgba(251,191,36,0.9)] z-10'
+                    : energy >= 40
                     ? engine?.player.character === 'ZORO'
                       ? 'bg-gradient-to-b from-emerald-500 via-green-600 to-teal-950 border-emerald-300 text-white animate-pulse shadow-[0_0_20px_rgba(34,197,94,0.6)]'
                       : 'bg-gradient-to-b from-purple-500 via-pink-600 to-purple-900 border-pink-300 text-white animate-pulse shadow-[0_0_20px_rgba(236,72,153,0.6)]'
@@ -374,11 +376,23 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({
                 {/* Convex Arcade Button Gloss Highlight */}
                 <div className="absolute top-1.5 inset-x-2.5 h-3.5 rounded-full bg-white/35 pointer-events-none" />
                 <GatlingBarrageIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" />
-                <span className="font-arcade text-[8px] sm:text-[9px] text-pink-200 tracking-wider">
-                  {engine?.player.character === 'ZORO' ? 'ONI GIRI' : 'GATLING'}
+                <span className={`font-arcade text-[7.5px] sm:text-[9px] tracking-wider ${
+                  engine?.finisherReady ? 'text-yellow-200 font-black' : 'text-pink-200'
+                }`}>
+                  {engine?.finisherReady
+                    ? engine?.player.character === 'ZORO'
+                      ? 'SANZEN'
+                      : 'BAZOOKA'
+                    : engine?.player.character === 'ZORO'
+                    ? 'ONI GIRI'
+                    : 'GATLING'}
                 </span>
-                <span className="absolute -top-1 -right-1 bg-purple-950 border border-purple-300 text-[8px] font-black px-1 rounded-sm text-yellow-300">
-                  SP
+                <span className={`absolute -top-1 -right-1 border text-[7.5px] font-black px-1 rounded-sm shadow ${
+                  engine?.finisherReady
+                    ? 'bg-red-600 border-yellow-200 text-yellow-200 animate-pulse'
+                    : 'bg-purple-950 border-purple-300 text-yellow-300'
+                }`}>
+                  {engine?.finisherReady ? '★ FINISH' : 'SP'}
                 </span>
               </button>
             </div>

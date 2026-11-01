@@ -29,20 +29,16 @@ class SoundEngine {
   public setMuted(muted: boolean) {
     this.isMuted = muted;
     if (muted) {
-      if (this.titleBgmAudio) {
-        try { this.titleBgmAudio.pause(); } catch {}
-      }
-      if (this.stageBgmAudio) {
-        try { this.stageBgmAudio.pause(); } catch {}
-      }
+      Object.values(this.audioElements).forEach((audio) => {
+        try { audio?.pause(); } catch {}
+      });
     } else {
-      if (this.bgmPlaying) {
-        if (this.currentBgmType === 'title' && this.titleBgmAudio) {
-          this.titleBgmAudio.play().catch(() => {});
-        } else if (this.currentBgmType === 'stage' && this.stageBgmAudio) {
-          this.stageBgmAudio.play().catch(() => {});
-        } else if (this.currentBgmType === 'stage') {
-          this.startBGM();
+      if (this.bgmPlaying && this.currentTrackKey !== 'none') {
+        const audio = this.audioElements[this.currentTrackKey];
+        if (audio) {
+          audio.play().catch(() => {});
+        } else {
+          this.playTrack(this.currentTrackKey);
         }
       }
     }
@@ -382,63 +378,61 @@ class SoundEngine {
     noise.start();
   }
 
-  // --- Official One Piece GBA Soundtracks ---
-  private currentBgmType: 'none' | 'title' | 'stage' = 'none';
-  private titleBgmAudio: HTMLAudioElement | null = null;
-  private stageBgmAudio: HTMLAudioElement | null = null;
-  private readonly titleBgmUrl: string = '/assets/aistudio/One_Piece_GBA_Soundtrack_-_Intro_Opening_5399f28c.mp3';
-  private readonly stageBgmUrl: string = '/assets/aistudio/One_Piece_GBA_Soundtrack_-_Navy_Base_stage_1_89f7b6cb.mp3';
+  // --- Official One Piece GBA & Attached Soundtracks ---
+  public readonly TRACK_URLS = {
+    title: '/assets/aistudio/One_Piece_GBA_Soundtrack_-_Intro_Opening_5399f28c.mp3',
+    alvida_stages: '/assets/aistudio/One_Piece_GBA_Soundtrack_-_Navy_Base_stage_1_89f7b6cb.mp3',
+    zoro_stages: '/assets/aistudio/One_Piece_GBA_Soundtrack_-_Navy_Base_stage_2_-_Leafy_Taichou_0ed1cacc.mp3',
+    boss_battle: '/assets/aistudio/Gomu_Gomu_No_Bazooka__8_Bit_Cover__One_Piece_OST_-_fsrex_0454501c.mp3',
+  };
+  private currentTrackKey: 'none' | 'title' | 'alvida_stages' | 'zoro_stages' | 'boss_battle' = 'none';
+  private audioElements: Partial<Record<string, HTMLAudioElement>> = {};
 
-  public playTitleBGM() {
-    if (this.currentBgmType === 'title' && this.bgmPlaying) return;
+  public playTrack(trackKey: 'title' | 'alvida_stages' | 'zoro_stages' | 'boss_battle') {
+    if (this.currentTrackKey === trackKey && this.bgmPlaying) return;
     this.stopBGM();
-    this.currentBgmType = 'title';
+    this.currentTrackKey = trackKey;
     this.bgmPlaying = true;
     this.initCtx();
 
-    if (!this.titleBgmAudio && typeof Audio !== 'undefined') {
+    if (!this.audioElements[trackKey] && typeof Audio !== 'undefined') {
       try {
-        this.titleBgmAudio = new Audio(this.titleBgmUrl);
-        this.titleBgmAudio.loop = true;
-        this.titleBgmAudio.volume = 0.55;
+        const audio = new Audio(this.TRACK_URLS[trackKey]);
+        audio.loop = true;
+        audio.volume = trackKey === 'boss_battle' ? 0.65 : 0.55;
+        this.audioElements[trackKey] = audio;
       } catch {
-        this.titleBgmAudio = null;
+        this.audioElements[trackKey] = undefined;
       }
     }
 
-    if (this.titleBgmAudio && !this.isMuted) {
-      this.titleBgmAudio.currentTime = 0;
-      this.titleBgmAudio.play().catch(() => {
-        this.setupUnlockListener(() => this.playTitleBGM());
+    const currentAudio = this.audioElements[trackKey];
+    if (currentAudio && !this.isMuted) {
+      currentAudio.currentTime = 0;
+      currentAudio.play().catch(() => {
+        this.setupUnlockListener(() => this.playTrack(trackKey));
       });
+    } else if (!currentAudio && !this.isMuted) {
+      this.loopBGM();
     }
   }
 
-  public playStageBGM() {
-    if (this.currentBgmType === 'stage' && this.bgmPlaying) return;
-    this.stopBGM();
-    this.currentBgmType = 'stage';
-    this.bgmPlaying = true;
-    this.initCtx();
-
-    if (!this.stageBgmAudio && typeof Audio !== 'undefined') {
-      try {
-        this.stageBgmAudio = new Audio(this.stageBgmUrl);
-        this.stageBgmAudio.loop = true;
-        this.stageBgmAudio.volume = 0.55;
-      } catch {
-        this.stageBgmAudio = null;
-      }
+  public playStageBGM(stageId: string = 'STAGE_1_GALLEY') {
+    if (stageId === 'STAGE_3_BOSS' || stageId === 'STAGE_6_MORGAN_SHOWDOWN') {
+      this.playTrack('boss_battle');
+    } else if (stageId === 'STAGE_4_BASE_COURTYARD' || stageId === 'STAGE_5_FORTRESS_INTERIOR') {
+      this.playTrack('zoro_stages');
+    } else {
+      this.playTrack('alvida_stages');
     }
+  }
 
-    if (this.stageBgmAudio && !this.isMuted) {
-      this.stageBgmAudio.currentTime = 0;
-      this.stageBgmAudio.play().catch(() => {
-        this.setupUnlockListener(() => this.playStageBGM());
-      });
-    } else if (!this.stageBgmAudio && !this.isMuted) {
-      this.loopBGM();
-    }
+  public playTitleBGM() {
+    this.playTrack('title');
+  }
+
+  public playBossBGM() {
+    this.playTrack('boss_battle');
   }
 
   // Backwards compatible method
@@ -448,21 +442,10 @@ class SoundEngine {
 
   public stopBGM() {
     this.bgmPlaying = false;
-    this.currentBgmType = 'none';
-    if (this.titleBgmAudio) {
-      try {
-        this.titleBgmAudio.pause();
-      } catch {
-        // ignore
-      }
-    }
-    if (this.stageBgmAudio) {
-      try {
-        this.stageBgmAudio.pause();
-      } catch {
-        // ignore
-      }
-    }
+    this.currentTrackKey = 'none';
+    Object.values(this.audioElements).forEach((audio) => {
+      try { audio?.pause(); } catch {}
+    });
     if (this.bgmTimeoutId !== null) {
       window.clearTimeout(this.bgmTimeoutId);
       this.bgmTimeoutId = null;
@@ -786,11 +769,12 @@ class SoundEngine {
 
     const loopDurationMs = Math.max(1000, step * 1000);
     this.bgmTimeoutId = window.setTimeout(() => {
-      if (this.bgmPlaying && !this.stageBgmAudio) {
+      if (this.bgmPlaying && !this.audioElements[this.currentTrackKey]) {
         this.loopBGM();
       }
     }, loopDurationMs);
   }
 }
 
+export { SoundEngine };
 export const sound = new SoundEngine();

@@ -4,7 +4,8 @@ export type StageId =
   | 'STAGE_3_BOSS'              // Castelo de Popa - Duelo com Alvida
   | 'STAGE_4_BASE_COURTYARD'    // Shells Town - Pátio da Base da Marinha (Zoro amarrado)
   | 'STAGE_5_FORTRESS_INTERIOR' // Shells Town - Torre do Capitão Morgan (Resgatar espadas)
-  | 'STAGE_6_MORGAN_SHOWDOWN';  // Shells Town - Duelo Final: Zoro vs Capitão Morgan
+  | 'STAGE_6_MORGAN_SHOWDOWN'   // Shells Town - Duelo Final: Zoro vs Capitão Morgan
+  | 'STAGE_7_ORANGE_TOWN';      // Orange Town - Vila Laranja & Frota do Capitão Buggy
 
 export type GameState = 
   | 'TITLE_MENU'
@@ -23,10 +24,15 @@ export type EntityType =
   | 'ENEMY_GUNNER'
   | 'ENEMY_MARINE_SWORD'
   | 'ENEMY_MARINE_GUN'
+  | 'ENEMY_MARINE_ELITE'        // Shells Town Captain Morgan's Elite Halberd Guard
+  | 'ENEMY_CLOWN_ACROBAT'       // Orange Town Acrobat Knife Juggler
+  | 'ENEMY_CLOWN_UNICYCLE'      // Orange Town Unicycle Sword Clown
   | 'BOSS_ALVIDA'
   | 'BOSS_MORGAN'
+  | 'BOSS_BUGGY'                // Orange Town Boss: Buggy the Star Clown
   | 'BARREL'
   | 'CRATE'
+  | 'BARRICADE'                 // Metal Slug style destructible obstacle
   | 'ROLLING_BARREL'
   | 'ITEM_MEAT'
   | 'ITEM_COIN'
@@ -85,10 +91,26 @@ export type EnemyAction =
   | 'WALK'
   | 'ATTACK_WINDUP'
   | 'ATTACK'
+  | 'JUGGLE'      // Acrobat Knife Juggler Throw
+  | 'SPLIT'       // Buggy Bara Bara Split
   | 'HURT'
+  | 'STUNNED'     // Stunned for 1.5s on heavy damage
   | 'FALLEN'
-  | 'SPIN'        // Alvida whirlwind spin / Morgan 360 axe cleave
+  | 'SPIN'        // Alvida whirlwind spin / Morgan 360 axe cleave / Unicycle spin
   | 'SLAM';       // Alvida mace slam / Morgan ground shockwave
+
+export interface BarricadeEntity {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  hp: number;
+  maxHp: number;
+  isCracked: boolean;
+  dead: boolean;
+  type: 'WOODEN_BARRICADE' | 'CLOWN_CANNON_WAGON';
+}
 
 export interface HitBox {
   x: number;
@@ -140,12 +162,12 @@ export interface Projectile {
   maxLife: number;
   facing: 1 | -1;
   hitEntities: Set<string>;
-  type: 'AIR_SLASH';
+  type: 'AIR_SLASH' | 'JUGGLER_DAGGER' | 'BUGGY_CHOP';
 }
 
 export interface DialogueMessage {
-  speaker: 'Luffy' | 'Coby' | 'Alvida' | 'Pirata' | 'Narrador' | 'Zoro' | 'Morgan' | 'Helmeppo' | 'Marinheiro';
-  portrait: 'luffy' | 'coby' | 'alvida' | 'pirate' | 'narrator' | 'zoro' | 'morgan' | 'helmeppo' | 'marine';
+  speaker: 'Luffy' | 'Coby' | 'Alvida' | 'Pirata' | 'Narrador' | 'Zoro' | 'Morgan' | 'Helmeppo' | 'Marinheiro' | 'Buggy' | 'Cabaji' | 'Mohji' | 'Chouchou';
+  portrait: 'luffy' | 'coby' | 'alvida' | 'pirate' | 'narrator' | 'zoro' | 'morgan' | 'helmeppo' | 'marine' | 'buggy' | 'cabaji' | 'mohji' | 'chouchou';
   text: string;
   scene?: 
     | 'whirlpool' 
@@ -161,7 +183,11 @@ export interface DialogueMessage {
     | 'morgan_tower'
     | 'zoro_freed'
     | 'morgan_boss'
-    | 'zoro_joined';
+    | 'zoro_joined'
+    | 'orange_town'
+    | 'buggy_circus'
+    | 'buggy_boss'
+    | 'buggy_defeat';
   title?: string;
   sfx?: 'DON' | 'DODON' | 'BAAM' | 'SHING' | 'BASH' | 'KABOOM' | 'GOGOGO';
   bubbleType?: 'normal' | 'shout' | 'thought' | 'narrative';

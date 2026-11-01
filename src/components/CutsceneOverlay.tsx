@@ -290,7 +290,7 @@ export const CutsceneOverlay: React.FC<CutsceneOverlayProps> = ({
   return (
     <div
       onClick={handleNext}
-      className="absolute inset-0 z-40 bg-black/90 backdrop-blur-md flex flex-col justify-between p-3 sm:p-6 cursor-pointer select-none overflow-hidden"
+      className="absolute inset-0 z-[60] bg-black/90 backdrop-blur-md flex flex-col justify-between p-3 sm:p-6 cursor-pointer select-none overflow-hidden"
     >
       {/* Halftone / Manga Screentone Texture Effect */}
       <div

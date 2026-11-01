@@ -6,8 +6,9 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GameEngine } from './game/engine';
-import { GameState, InputState, PlayerCharacter, StageId } from './game/types';
+import { GameState, InputState, PlayerCharacter, StageId, FinisherCinematicData } from './game/types';
 import { sound } from './game/audio';
+import { SaveManager } from './game/storage';
 import {
   PROLOGUE_DIALOGUE,
   STAGE_2_DIALOGUE,
@@ -17,6 +18,7 @@ import {
   SWORD_TOWER_DIALOGUE,
   ZORO_FREED_DIALOGUE,
   MORGAN_VICTORY_DIALOGUE,
+  ORANGE_TOWN_DIALOGUE,
 } from './game/dialogues';
 
 import { GameCanvas } from './components/GameCanvas';
@@ -29,12 +31,14 @@ import { VictoryModal } from './components/VictoryModal';
 import { GameOverModal } from './components/GameOverModal';
 import { AchievementToast } from './components/AchievementToast';
 import { AchievementsModal } from './components/AchievementsModal';
+import { FinisherCinematicOverlay } from './components/FinisherCinematicOverlay';
 
 export default function App() {
   const engine = useMemo(() => new GameEngine(), []);
   const [gameState, setGameState] = useState<GameState>('TITLE_MENU');
   const [showAchievements, setShowAchievements] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(sound.getMuted());
+  const [finisherData, setFinisherData] = useState<FinisherCinematicData | null>(null);
   const [highScore, setHighScore] = useState<number>(() => {
     try {
       return Number(localStorage.getItem('one_piece_alvida_highscore')) || 0;
@@ -52,6 +56,7 @@ export default function App() {
     score: number;
     combo: number;
     wave: number;
+    finisherReady?: boolean;
     currentStage?: StageId;
     bossHp?: number;
     bossMaxHp?: number;
@@ -65,6 +70,7 @@ export default function App() {
     score: 0,
     combo: 0,
     wave: 1,
+    finisherReady: false,
     currentStage: 'STAGE_1_GALLEY',
     bossHp: undefined,
     bossMaxHp: undefined,
@@ -92,7 +98,13 @@ export default function App() {
   useEffect(() => {
     engine.onStateChange = (newState) => {
       setGameState(newState);
-      if (newState === 'VICTORY' || newState === 'GAME_OVER') {
+      if (newState !== 'PLAYING') {
+        setFinisherData(null);
+      }
+      if (newState === 'TITLE_MENU') {
+        sound.playTitleBGM();
+      } else if (newState === 'VICTORY' || newState === 'GAME_OVER') {
+        sound.stopBGM();
         if (engine.player.score > highScore) {
           setHighScore(engine.player.score);
           try {
@@ -109,6 +121,10 @@ export default function App() {
         ...hud,
         currentStage: engine.currentStage,
       });
+    };
+
+    engine.onCinematicFinisher = (cinematic) => {
+      setFinisherData(cinematic);
     };
 
     // Mobile Vibration on Hits & Damage
@@ -133,13 +149,13 @@ export default function App() {
     };
   }, [engine, highScore]);
 
-  const handleStartGame = () => {
+  const handleStartGame = (character?: PlayerCharacter) => {
     engine.resetGame();
-    engine.startStory();
+    engine.startStage('STAGE_1_GALLEY', character || 'LUFFY');
   };
 
-  const handleSelectStage = (stageId: StageId) => {
-    engine.startStage(stageId);
+  const handleSelectStage = (stageId: StageId, character?: PlayerCharacter) => {
+    engine.startStage(stageId, character);
   };
 
   const handlePrologueComplete = () => {
@@ -159,6 +175,17 @@ export default function App() {
     engine.beginPlaying();
   };
 
+  const handleReplayCampaign = () => {
+    SaveManager.restartStoryCampaign();
+    engine.resetGame();
+    engine.startStage('STAGE_1_GALLEY', 'LUFFY');
+  };
+
+  const handleReturnToMenu = () => {
+    sound.playTitleBGM();
+    setGameState('TITLE_MENU');
+  };
+
   const handleToggleMute = () => {
     const nextMuted = sound.toggleMute();
     setIsMuted(nextMuted);
@@ -168,6 +195,9 @@ export default function App() {
   const getPrologueDialogues = () => {
     if (engine.currentStage === 'STAGE_4_BASE_COURTYARD') {
       return ZORO_COURTYARD_DIALOGUE;
+    }
+    if (engine.currentStage === 'STAGE_7_ORANGE_TOWN') {
+      return ORANGE_TOWN_DIALOGUE;
     }
     return PROLOGUE_DIALOGUE;
   };
@@ -179,11 +209,17 @@ export default function App() {
     if (engine.currentStage === 'STAGE_2_DECK') {
       return BOSS_DIALOGUE;
     }
+    if (engine.currentStage === 'STAGE_3_BOSS') {
+      return ZORO_COURTYARD_DIALOGUE;
+    }
     if (engine.currentStage === 'STAGE_4_BASE_COURTYARD') {
       return SWORD_TOWER_DIALOGUE;
     }
     if (engine.currentStage === 'STAGE_5_FORTRESS_INTERIOR') {
       return ZORO_FREED_DIALOGUE;
+    }
+    if (engine.currentStage === 'STAGE_6_MORGAN_SHOWDOWN') {
+      return MORGAN_VICTORY_DIALOGUE;
     }
     return STAGE_2_DIALOGUE;
   };
@@ -199,6 +235,12 @@ export default function App() {
     <main className="fixed inset-0 w-screen h-screen overflow-hidden bg-slate-950 select-none">
       {/* 60fps Game Simulation Canvas */}
       <GameCanvas engine={engine} inputStateRef={inputStateRef} />
+
+      {/* Extreme Manga/Anime Combo Finisher Cinematic Overlay */}
+      <FinisherCinematicOverlay
+        cinematicData={finisherData}
+        onDismiss={() => setFinisherData(null)}
+      />
 
       {/* Persistent Achievement Toast Overlay */}
       <AchievementToast />
@@ -218,6 +260,7 @@ export default function App() {
           bossHp={hudData.bossHp}
           bossMaxHp={hudData.bossMaxHp}
           bossType={hudData.bossType}
+          finisherReady={hudData.finisherReady}
           onPause={() => engine.pauseGame()}
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
@@ -278,7 +321,7 @@ export default function App() {
         />
       )}
 
-      {/* Victory Modal */}
+      {/* Victory Modal with Stage Advance Support */}
       {gameState === 'VICTORY' && (
         <VictoryModal
           score={hudData.score}
@@ -286,6 +329,9 @@ export default function App() {
           maxCombo={engine.player.combo}
           currentStage={engine.currentStage}
           onRestart={handleRestart}
+          onProceedNextStage={() => engine.proceedToNextStage()}
+          onReturnToMenu={handleReturnToMenu}
+          onReplayCampaign={handleReplayCampaign}
         />
       )}
 

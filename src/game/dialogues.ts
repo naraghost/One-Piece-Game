@@ -300,3 +300,34 @@ export const MORGAN_VICTORY_DIALOGUE: DialogueMessage[] = [
     text: 'Rei dos Piratas, é? Bom... se vou ser o subordinado de alguém, que seja do homem mais ambicioso dos mares. Vamos nessa, Capitão!',
   },
 ];
+
+export const ORANGE_TOWN_DIALOGUE: DialogueMessage[] = [
+  {
+    speaker: 'Narrador',
+    portrait: 'narrator',
+    title: 'FASE 7 · VILA LARANJA (ORANGE TOWN)',
+    scene: 'deck',
+    text: 'Com Zoro a bordo de um pequeno barco a vela, o Bando do Chapéu de Palha avista uma fumaça subindo da pitoresca Vila Laranja...',
+  },
+  {
+    speaker: 'Luffy',
+    portrait: 'luffy',
+    title: 'FROTA DO PALHAÇO BUGGY',
+    scene: 'deck',
+    text: 'Olha lá, Zoro! Tem um circo pirata destruindo a cidade com canhões gigantes! Eles têm uma bandeira com um nariz vermelho redondo!',
+  },
+  {
+    speaker: 'Zoro',
+    portrait: 'zoro',
+    title: 'CAPITÃO BUGGY, O PALHAÇO',
+    scene: 'deck',
+    text: 'Cuidado, Luffy. Aquele é o bando de Buggy, o Estrela. Dizem que ele também possui poderes bizarros de uma Akuma no Mi!',
+  },
+  {
+    speaker: 'Luffy',
+    portrait: 'luffy',
+    title: 'VAMOS RECRUTAR UMA NAVEGADORA',
+    scene: 'deck',
+    text: 'Shishishi! Não importa quem seja! Se machucarem pessoas inocentes, vão levar um Gomu Gomu no Stamp na cara! AO ATAQUE!!',
+  },
+];

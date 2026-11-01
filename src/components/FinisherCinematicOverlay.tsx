@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FinisherCinematicData } from '../game/types';
 
 interface FinisherCinematicOverlayProps {
   cinematicData: FinisherCinematicData | null;
+  onDismiss?: () => void;
 }
 
 export const FinisherCinematicOverlay: React.FC<FinisherCinematicOverlayProps> = ({
   cinematicData,
+  onDismiss,
 }) => {
+  useEffect(() => {
+    if (cinematicData) {
+      const timer = window.setTimeout(() => {
+        onDismiss?.();
+      }, 1200);
+      return () => window.clearTimeout(timer);
+    }
+  }, [cinematicData, onDismiss]);
+
   if (!cinematicData) return null;
 
   const isZoro = cinematicData.character === 'ZORO';
 
   return (
-    <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+    <div className="absolute inset-0 z-35 pointer-events-none flex items-center justify-center overflow-hidden animate-in fade-in zoom-in-95 duration-100">
       {/* Darkened Cinematic Shutter Backdrop with Action Lines */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
 

@@ -1,6 +1,7 @@
 import { sound } from './audio';
 import { SpriteRenderer } from './sprites';
 import { achievements } from './achievements';
+import { SaveManager } from './storage';
 import {
   DamagePopup,
   EnemyAction,
@@ -39,10 +40,13 @@ export interface EnemyEntity extends BaseEntity {
   action: EnemyAction;
   attackCooldown: number;
   windupTimer: number;
+  stunTimer: number;
   targetX: number;
   targetY: number;
   isBrute?: boolean;
   isGunner?: boolean;
+  isElite?: boolean;
+  poise?: number;
   plannedAttack?: 'SLAM' | 'SPIN' | 'ATTACK';
 }
 
@@ -134,6 +138,8 @@ export class GameEngine {
     invulnerableTimer: 0,
     walkFrame: 0,
     isDashing: false,
+    hasAirSlashed: false,
+    aerialHoldTimer: 0,
   };
 
   // Boss Reference
@@ -152,7 +158,7 @@ export class GameEngine {
 
   // Wave Progression
   public wave: number = 1;
-  public maxWaves: number = 2;
+  public maxWaves: number = 3;
   public enemiesDefeatedInWave: number = 0;
   public totalEnemiesDefeated: number = 0;
 
@@ -215,11 +221,13 @@ export class GameEngine {
       invulnerableTimer: 0,
       walkFrame: 0,
       isDashing: false,
+      hasAirSlashed: false,
+      aerialHoldTimer: 0,
     };
     this.camX = 0;
     this.targetCamX = 0;
     this.wave = 1;
-    this.maxWaves = 2;
+    this.maxWaves = 3;
     this.enemiesDefeatedInWave = 0;
     this.totalEnemiesDefeated = 0;
     this.enemies = [];
@@ -248,6 +256,7 @@ export class GameEngine {
       case 'STAGE_4_BASE_COURTYARD': return 4;
       case 'STAGE_5_FORTRESS_INTERIOR': return 5;
       case 'STAGE_6_MORGAN_SHOWDOWN': return 6;
+      case 'STAGE_7_ORANGE_TOWN': return 7;
       default: return 1;
     }
   }
@@ -260,14 +269,15 @@ export class GameEngine {
       case 4: return 'STAGE_4_BASE_COURTYARD';
       case 5: return 'STAGE_5_FORTRESS_INTERIOR';
       case 6: return 'STAGE_6_MORGAN_SHOWDOWN';
+      case 7: return 'STAGE_7_ORANGE_TOWN';
       default: return 'STAGE_1_GALLEY';
     }
   }
 
   public static getHighestUnlockedStage(): number {
     try {
-      const val = localStorage.getItem('onepiece_story_unlocked_stage');
-      return val ? Math.max(1, Math.min(6, parseInt(val, 10))) : 1;
+      const activeSlot = SaveManager.getActiveSlot();
+      return Math.max(1, Math.min(7, activeSlot.unlockedStage));
     } catch {
       return 1;
     }
@@ -275,10 +285,7 @@ export class GameEngine {
 
   public static unlockStage(stageNum: number) {
     try {
-      const current = GameEngine.getHighestUnlockedStage();
-      if (stageNum > current) {
-        localStorage.setItem('onepiece_story_unlocked_stage', String(stageNum));
-      }
+      SaveManager.recordStageCleared(stageNum - 1, 0, 200);
     } catch {
       // ignore
     }
@@ -286,23 +293,26 @@ export class GameEngine {
 
   public static resetStoryProgress() {
     try {
-      localStorage.setItem('onepiece_story_unlocked_stage', '1');
+      SaveManager.resetSlot(SaveManager.getActiveSlotId());
     } catch {
       // ignore
     }
   }
 
-  public startStage(stageId: StageId) {
+  public startStage(stageId: StageId, chosenCharacter?: PlayerCharacter) {
     this.currentStage = stageId;
     this.wave = 1;
-    this.maxWaves = (stageId === 'STAGE_3_BOSS' || stageId === 'STAGE_6_MORGAN_SHOWDOWN') ? 1 : 2;
+    this.maxWaves = (stageId === 'STAGE_3_BOSS' || stageId === 'STAGE_6_MORGAN_SHOWDOWN') ? 1 : 3;
 
-    // Set character: Play as Zoro in Morgan Showdown!
-    if (stageId === 'STAGE_6_MORGAN_SHOWDOWN') {
+    // Set character based on pre-stage selection or stage requirement
+    if (chosenCharacter) {
+      this.player.character = chosenCharacter;
+    } else if (stageId === 'STAGE_6_MORGAN_SHOWDOWN') {
       this.player.character = 'ZORO';
       achievements.recordZoroFreed();
     } else {
-      this.player.character = 'LUFFY';
+      const activeSlot = SaveManager.getActiveSlot();
+      this.player.character = activeSlot.character || 'LUFFY';
     }
 
     this.player.x = 140;
@@ -313,6 +323,8 @@ export class GameEngine {
     this.player.vz = 0;
     this.player.hp = Math.max(90, this.player.hp);
     this.player.action = 'IDLE';
+    this.player.hasAirSlashed = false;
+    this.player.aerialHoldTimer = 0;
     this.camX = 0;
     this.cameraZoom = 1.0;
     this.targetZoom = 1.0;
@@ -338,7 +350,7 @@ export class GameEngine {
 
   public beginPlaying() {
     this.state = 'PLAYING';
-    sound.playStageBGM();
+    sound.playStageBGM(this.currentStage);
     this.onStateChange?.(this.state);
   }
 
@@ -421,55 +433,91 @@ export class GameEngine {
         for (let i = 0; i < 3; i++) {
           this.enemies.push(this.createGrunt(baseSpawnX + i * 65, this.minDeckY + 25 + i * 40, false));
         }
-      } else {
-        for (let i = 0; i < 3; i++) {
-          this.enemies.push(this.createGrunt(baseSpawnX + i * 60, this.minDeckY + 20 + i * 45, false));
+      } else if (wave === 2) {
+        for (let i = 0; i < 4; i++) {
+          this.enemies.push(this.createGrunt(baseSpawnX + i * 60, this.minDeckY + 20 + i * 35, false));
         }
         this.enemies.push(this.createGrunt(baseSpawnX + 220, (this.minDeckY + this.maxDeckY) / 2, true));
+      } else {
+        // Wave 3: Heavy Pirate Platoon
+        for (let i = 0; i < 4; i++) {
+          this.enemies.push(this.createGrunt(baseSpawnX + i * 55, this.minDeckY + 18 + i * 38, false));
+        }
+        this.enemies.push(this.createGrunt(baseSpawnX + 230, this.minDeckY + 25, true));
+        this.enemies.push(this.createGrunt(baseSpawnX + 280, this.maxDeckY - 25, true));
       }
     } else if (this.currentStage === 'STAGE_2_DECK') {
       if (wave === 1) {
         for (let i = 0; i < 4; i++) {
           this.enemies.push(this.createGrunt(baseSpawnX + i * 55, this.minDeckY + 15 + i * 35, false));
         }
-      } else {
-        for (let i = 0; i < 4; i++) {
-          this.enemies.push(this.createGrunt(baseSpawnX + i * 50, this.minDeckY + 15 + i * 35, false));
+        this.enemies.push(this.createGrunt(baseSpawnX + 220, (this.minDeckY + this.maxDeckY) / 2, true));
+      } else if (wave === 2) {
+        for (let i = 0; i < 5; i++) {
+          this.enemies.push(this.createGrunt(baseSpawnX + i * 50, this.minDeckY + 15 + i * 32, false));
         }
         this.enemies.push(this.createGrunt(baseSpawnX + 230, this.minDeckY + 25, true));
-        this.enemies.push(this.createGrunt(baseSpawnX + 270, this.maxDeckY - 25, true));
+        this.enemies.push(this.createGrunt(baseSpawnX + 280, this.maxDeckY - 25, true));
+      } else {
+        // Wave 3: Deck Assault Squad
+        for (let i = 0; i < 6; i++) {
+          this.enemies.push(this.createGrunt(baseSpawnX + i * 45, this.minDeckY + 10 + i * 30, false));
+        }
+        this.enemies.push(this.createGrunt(baseSpawnX + 250, this.minDeckY + 20, true));
+        this.enemies.push(this.createGrunt(baseSpawnX + 310, this.maxDeckY - 20, true));
       }
     } else if (this.currentStage === 'STAGE_3_BOSS') {
       this.state = 'BOSS_INTRO';
       this.onStateChange?.(this.state);
       this.boss = this.createAlvida(baseSpawnX + 160, (this.minDeckY + this.maxDeckY) / 2);
       this.enemies.push(this.boss);
-      this.enemies.push(this.createGrunt(baseSpawnX + 80, this.minDeckY + 30, false));
-      this.enemies.push(this.createGrunt(baseSpawnX + 80, this.maxDeckY - 25, false));
+      this.enemies.push(this.createGrunt(baseSpawnX + 70, this.minDeckY + 30, false));
+      this.enemies.push(this.createGrunt(baseSpawnX + 80, (this.minDeckY + this.maxDeckY) / 2, false));
+      this.enemies.push(this.createGrunt(baseSpawnX + 70, this.maxDeckY - 25, false));
     } else if (this.currentStage === 'STAGE_4_BASE_COURTYARD') {
-      // Shells Town Courtyard: Marines with cutlasses and rifles
+      // Shells Town Courtyard: Marines with cutlasses, rifles, and Morgan's Halberd Elites
       if (wave === 1) {
         for (let i = 0; i < 3; i++) {
-          this.enemies.push(this.createMarineGrunt(baseSpawnX + i * 65, this.minDeckY + 20 + i * 40, false));
+          this.enemies.push(this.createMarineGrunt(baseSpawnX + i * 65, this.minDeckY + 20 + i * 40, i === 1));
         }
-        this.enemies.push(this.createMarineGrunt(baseSpawnX + 240, (this.minDeckY + this.maxDeckY) / 2, true));
-      } else {
+        this.enemies.push(this.createMarineElite(baseSpawnX + 220, this.minDeckY + 30));
+      } else if (wave === 2) {
         for (let i = 0; i < 4; i++) {
           this.enemies.push(this.createMarineGrunt(baseSpawnX + i * 55, this.minDeckY + 15 + i * 35, i % 2 === 1));
         }
-        this.enemies.push(this.createMarineGrunt(baseSpawnX + 260, this.minDeckY + 30, false));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 230, this.minDeckY + 25));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 300, this.maxDeckY - 20));
+      } else {
+        // Wave 3: Heavy Marine Garrison
+        for (let i = 0; i < 4; i++) {
+          this.enemies.push(this.createMarineGrunt(baseSpawnX + i * 50, this.minDeckY + 15 + i * 35, i === 2));
+        }
+        this.enemies.push(this.createMarineElite(baseSpawnX + 210, this.minDeckY + 20));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 270, (this.minDeckY + this.maxDeckY) / 2));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 330, this.maxDeckY - 20));
       }
     } else if (this.currentStage === 'STAGE_5_FORTRESS_INTERIOR') {
-      // Morgan's Tower: Marine guards protecting the swords
+      // Morgan's Tower: Marine guards & Halberd Elite Officers protecting the swords
       if (wave === 1) {
-        for (let i = 0; i < 4; i++) {
-          this.enemies.push(this.createMarineGrunt(baseSpawnX + i * 60, this.minDeckY + 20 + i * 35, i === 2));
-        }
+        this.enemies.push(this.createMarineGrunt(baseSpawnX, this.minDeckY + 20, false));
+        this.enemies.push(this.createMarineGrunt(baseSpawnX + 70, this.maxDeckY - 25, true));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 180, (this.minDeckY + this.maxDeckY) / 2));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 260, this.minDeckY + 35));
+      } else if (wave === 2) {
+        this.enemies.push(this.createMarineGrunt(baseSpawnX, this.minDeckY + 25, false));
+        this.enemies.push(this.createMarineGrunt(baseSpawnX + 80, this.maxDeckY - 25, true));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 160, this.minDeckY + 20));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 240, (this.minDeckY + this.maxDeckY) / 2));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 320, this.maxDeckY - 20));
       } else {
-        for (let i = 0; i < 4; i++) {
-          this.enemies.push(this.createMarineGrunt(baseSpawnX + i * 55, this.minDeckY + 15 + i * 35, false));
-        }
-        this.enemies.push(this.createMarineGrunt(baseSpawnX + 260, (this.minDeckY + this.maxDeckY) / 2, true));
+        // Wave 3: High Command Elite Guard
+        this.enemies.push(this.createMarineGrunt(baseSpawnX, this.minDeckY + 15, false));
+        this.enemies.push(this.createMarineGrunt(baseSpawnX + 60, this.minDeckY + 35, false));
+        this.enemies.push(this.createMarineGrunt(baseSpawnX + 120, this.maxDeckY - 25, true));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 190, this.minDeckY + 20));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 250, (this.minDeckY + this.maxDeckY) / 2));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 310, this.maxDeckY - 25));
+        this.enemies.push(this.createMarineElite(baseSpawnX + 370, this.minDeckY + 30));
       }
     } else if (this.currentStage === 'STAGE_6_MORGAN_SHOWDOWN') {
       // Showdown: Axe-Hand Morgan boss battle with Zoro!
@@ -477,9 +525,62 @@ export class GameEngine {
       this.onStateChange?.(this.state);
       this.boss = this.createMorgan(baseSpawnX + 160, (this.minDeckY + this.maxDeckY) / 2);
       this.enemies.push(this.boss);
-      this.enemies.push(this.createMarineGrunt(baseSpawnX + 80, this.minDeckY + 25, false));
-      this.enemies.push(this.createMarineGrunt(baseSpawnX + 80, this.maxDeckY - 25, true));
+      this.enemies.push(this.createMarineElite(baseSpawnX + 70, this.minDeckY + 25));
+      this.enemies.push(this.createMarineElite(baseSpawnX + 80, (this.minDeckY + this.maxDeckY) / 2));
+      this.enemies.push(this.createMarineElite(baseSpawnX + 70, this.maxDeckY - 25));
+    } else if (this.currentStage === 'STAGE_7_ORANGE_TOWN') {
+      // Orange Town: Buggy the Star Clown's circus pirate fleet!
+      if (wave === 1) {
+        for (let i = 0; i < 3; i++) {
+          this.enemies.push(this.createGrunt(baseSpawnX + i * 65, this.minDeckY + 20 + i * 35, false));
+        }
+        this.enemies.push(this.createGrunt(baseSpawnX + 220, (this.minDeckY + this.maxDeckY) / 2, true));
+        this.enemies.push(this.createGrunt(baseSpawnX + 290, this.minDeckY + 30, false));
+      } else if (wave === 2) {
+        for (let i = 0; i < 4; i++) {
+          this.enemies.push(this.createGrunt(baseSpawnX + i * 60, this.minDeckY + 15 + i * 35, false));
+        }
+        this.enemies.push(this.createGrunt(baseSpawnX + 210, this.minDeckY + 25, true));
+        this.enemies.push(this.createGrunt(baseSpawnX + 270, this.maxDeckY - 25, true));
+      } else {
+        // Wave 3: Circus Pirate Brigade
+        for (let i = 0; i < 5; i++) {
+          this.enemies.push(this.createGrunt(baseSpawnX + i * 50, this.minDeckY + 15 + i * 32, false));
+        }
+        this.enemies.push(this.createGrunt(baseSpawnX + 230, this.minDeckY + 20, true));
+        this.enemies.push(this.createGrunt(baseSpawnX + 280, (this.minDeckY + this.maxDeckY) / 2, true));
+        this.enemies.push(this.createGrunt(baseSpawnX + 330, this.maxDeckY - 20, true));
+      }
     }
+  }
+
+  private createMarineElite(x: number, y: number): EnemyEntity {
+    return {
+      id: `marine_elite_${Math.random()}`,
+      type: 'ENEMY_MARINE_ELITE',
+      x,
+      y,
+      z: 0,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      facing: -1,
+      width: 32,
+      height: 54,
+      hp: 95,
+      maxHp: 95,
+      action: 'WALK',
+      actionTimer: 0,
+      attackCooldown: 1.0 + Math.random() * 0.4,
+      windupTimer: 0,
+      stunTimer: 0,
+      targetX: x,
+      targetY: y,
+      invulnerableTimer: 0,
+      dead: false,
+      isElite: true,
+      poise: 2,
+    };
   }
 
   private createGrunt(x: number, y: number, isBrute: boolean): EnemyEntity {
@@ -501,6 +602,7 @@ export class GameEngine {
       actionTimer: 0,
       attackCooldown: 1.2 + Math.random() * 0.8,
       windupTimer: 0,
+      stunTimer: 0,
       targetX: x,
       targetY: y,
       invulnerableTimer: 0,
@@ -528,6 +630,7 @@ export class GameEngine {
       actionTimer: 0,
       attackCooldown: isGunner ? 2.0 + Math.random() * 0.8 : 1.2 + Math.random() * 0.6,
       windupTimer: 0,
+      stunTimer: 0,
       targetX: x,
       targetY: y,
       invulnerableTimer: 0,
@@ -549,12 +652,13 @@ export class GameEngine {
       facing: -1,
       width: 45,
       height: 70,
-      hp: 250,
-      maxHp: 250,
+      hp: 400,
+      maxHp: 400,
       action: 'IDLE',
       actionTimer: 0,
       attackCooldown: 1.5,
       windupTimer: 0,
+      stunTimer: 0,
       targetX: x,
       targetY: y,
       invulnerableTimer: 0,
@@ -575,12 +679,13 @@ export class GameEngine {
       facing: -1,
       width: 50,
       height: 75,
-      hp: 320,
-      maxHp: 320,
+      hp: 500,
+      maxHp: 500,
       action: 'IDLE',
       actionTimer: 0,
       attackCooldown: 1.6,
       windupTimer: 0,
+      stunTimer: 0,
       targetX: x,
       targetY: y,
       invulnerableTimer: 0,
@@ -593,12 +698,19 @@ export class GameEngine {
     const clampedDt = Math.min(dt, 0.05);
     this.gameTime += clampedDt;
 
+    // Smooth micro hitstop: eliminates attack lag without freezing inputs or skipping frames
     if (this.hitstopTimer > 0) {
-      this.hitstopTimer -= clampedDt;
-      return;
+      this.hitstopTimer = Math.max(0, this.hitstopTimer - clampedDt);
     }
 
-    if (this.state !== 'PLAYING' && this.state !== 'BOSS_INTRO') return;
+    if (this.state !== 'PLAYING' && this.state !== 'BOSS_INTRO') {
+      if (this.cinematicFinisherData || this.cinematicFinisherTimer > 0) {
+        this.cinematicFinisherData = null;
+        this.cinematicFinisherTimer = 0;
+        this.onCinematicFinisher?.(null);
+      }
+      return;
+    }
 
     // Screenshake decay
     if (this.screenShake > 0) {
@@ -779,23 +891,37 @@ export class GameEngine {
         this.spawnDust(p.x, p.y);
       }
 
-      // Aerial Attack: Traveling Air Slash or Downward Plunge
-      if (p.z > 15 && (input.justPunch || input.justPistol) && p.action !== 'AIR_ATTACK') {
-        if (input.down) {
-          // Downward plunge
+      // Aerial Actions: Hold Attack for Gomu Gomu no Stamp or tap for Air Slash (20 SP cost)
+      if (p.z > 15) {
+        if (input.punch) {
+          p.aerialHoldTimer += dt;
+        } else {
+          p.aerialHoldTimer = 0;
+        }
+
+        // Gomu Gomu no Stamp: Hold Attack or Down + Attack while airborne!
+        if ((p.aerialHoldTimer >= 0.12 || (input.down && input.justPunch)) && p.action !== 'AIR_ATTACK') {
           p.action = 'AIR_ATTACK';
-          p.vz = -460;
-          p.vx = p.facing * 190;
+          p.vz = -540;
+          p.vx = p.facing * 140;
           if (p.character === 'ZORO') {
             sound.playPunch(2);
             this.addMangaText(p.x, p.y - 70, 'KATANA PLUNGE!!', '#52b788', 1.3);
           } else {
             sound.playRubberStretch();
-            this.addMangaText(p.x, p.y - 70, 'GOMU GOMU NO STAMP!!', '#ffb703', 1.3);
+            this.addMangaText(p.x, p.y - 70, 'GOMU GOMU NO STAMP!!', '#ffb703', 1.4);
           }
-        } else {
-          // Aerial Traveling Slash Attack!
-          this.executeAerialSlash();
+        } else if ((input.justPunch || input.justPistol) && !input.down && p.action !== 'AIR_ATTACK') {
+          // Aerial Traveling Slash Attack (Capped: 1 per jump + 20 SP energy!)
+          if (p.hasAirSlashed) {
+            this.addDamagePopup(p.x, p.y - 45 - p.z, 'LIMITE AÉREO!', '#94a3b8', 0.9);
+          } else if (p.energy < 20) {
+            this.addDamagePopup(p.x, p.y - 45 - p.z, 'SEM ENERGIA (20 SP)!', '#f87171', 0.9);
+          } else {
+            p.energy -= 20;
+            p.hasAirSlashed = true;
+            this.executeAerialSlash();
+          }
         }
       }
 
@@ -887,11 +1013,14 @@ export class GameEngine {
       if (p.z <= 0) {
         p.z = 0;
         p.vz = 0;
+        p.hasAirSlashed = false;
+        p.aerialHoldTimer = 0;
         if (p.action === 'AIR_ATTACK') {
           sound.playHeavySmash();
-          this.screenShake = 9;
-          this.executePlayerAttack(30, 80, true, true);
+          this.screenShake = 14;
+          this.executeAerialImpact();
           this.spawnHitSparks(p.x, p.y);
+          this.spawnDust(p.x, p.y);
           p.action = 'IDLE';
         } else if (p.action === 'JUMP') {
           p.action = 'IDLE';
@@ -942,7 +1071,7 @@ export class GameEngine {
     p.vx = 0;
     p.vy = 0;
     this.screenShake = 24;
-    this.hitstopTimer = 0.16;
+    this.hitstopTimer = 0.05;
 
     const blastDamage = isZoro ? 145 : 130;
     const blastReach = 320;
@@ -958,7 +1087,17 @@ export class GameEngine {
         hitCount++;
         enemy.hp -= blastDamage;
         enemy.invulnerableTimer = 0.35;
-        enemy.action = 'HURT';
+        
+        const isBoss = enemy.type === 'BOSS_ALVIDA' || enemy.type === 'BOSS_MORGAN';
+        if (!isBoss) {
+          enemy.action = 'STUNNED';
+          enemy.stunTimer = 1.5;
+          enemy.windupTimer = 0;
+          enemy.attackCooldown = Math.max(enemy.attackCooldown, 1.5);
+        } else {
+          enemy.action = 'HURT';
+        }
+
         enemy.vx = p.facing * 520;
         enemy.vz = 240;
 
@@ -1060,6 +1199,97 @@ export class GameEngine {
     p.vz = Math.max(p.vz, 120);
   }
 
+  // Gomu Gomu no Stamp / Katana Plunge: Ground Shockwave Impact
+  public executeAerialImpact() {
+    const p = this.player;
+    const isZoro = p.character === 'ZORO';
+    const stampDamage = isZoro ? 48 : 52;
+    const shockRadius = 110;
+    let hitCount = 0;
+
+    this.enemies.forEach((enemy) => {
+      if (enemy.dead || enemy.invulnerableTimer > 0) return;
+      const dx = Math.abs(enemy.x - p.x);
+      const dy = Math.abs(enemy.y - p.y);
+      const dist = Math.hypot(dx, dy);
+
+      if (dist <= shockRadius) {
+        hitCount++;
+        enemy.hp -= stampDamage;
+        enemy.invulnerableTimer = 0.35;
+
+        const isBoss = enemy.type === 'BOSS_ALVIDA' || enemy.type === 'BOSS_MORGAN';
+        if (!isBoss) {
+          enemy.action = 'STUNNED';
+          enemy.stunTimer = 1.5;
+          enemy.windupTimer = 0;
+          enemy.attackCooldown = Math.max(enemy.attackCooldown, 1.5);
+          this.addMangaText(enemy.x, enemy.y - 65, 'STUNNED!!', '#fde047', 1.3);
+        } else {
+          enemy.action = 'HURT';
+        }
+
+        enemy.vx = Math.sign(enemy.x - p.x || p.facing) * 260;
+        enemy.vz = 200;
+
+        p.combo++;
+        p.comboTimer = 2.8;
+        p.score += stampDamage * 25;
+        achievements.recordCombo(p.combo);
+
+        this.spawnHitSparks(enemy.x, enemy.y - 25);
+        this.addDamagePopup(
+          enemy.x + (Math.random() * 20 - 10),
+          enemy.y - 50 - enemy.z,
+          `${stampDamage}!`,
+          isZoro ? '#22c55e' : '#ff0055',
+          1.6
+        );
+
+        if (enemy.hp <= 0) {
+          this.defeatEnemy(enemy);
+        }
+      }
+    });
+
+    // Breakables within stomp shockwave
+    this.barrels.forEach((barrel) => {
+      if (barrel.dead) return;
+      if (Math.hypot(barrel.x - p.x, barrel.y - p.y) <= shockRadius) {
+        barrel.dead = true;
+        this.destroyBarrel(barrel);
+      }
+    });
+
+    this.crates.forEach((crate) => {
+      if (crate.dead) return;
+      if (Math.hypot(crate.x - p.x, crate.y - p.y) <= shockRadius) {
+        crate.dead = true;
+        this.destroyCrate(crate);
+      }
+    });
+
+    // Stomp shockwave dust ring
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      this.particles.push({
+        x: p.x + Math.cos(angle) * 30,
+        y: p.y + Math.sin(angle) * 14,
+        vx: Math.cos(angle) * 160,
+        vy: Math.sin(angle) * 80,
+        color: isZoro ? 'rgba(74, 222, 128, 0.7)' : 'rgba(255, 183, 3, 0.8)',
+        size: 5,
+        life: 0,
+        maxLife: 0.35,
+        shape: 'smoke',
+      });
+    }
+
+    if (hitCount > 0) {
+      this.onHitLanded?.(true, stampDamage);
+    }
+  }
+
   // Update flying projectiles (Air Slash traveling forward)
   private updateProjectiles(dt: number) {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -1100,7 +1330,18 @@ export class GameEngine {
           proj.hitEntities.add(enemy.id);
           enemy.hp -= proj.damage;
           enemy.invulnerableTimer = 0.2;
-          enemy.action = 'HURT';
+
+          const isBoss = enemy.type === 'BOSS_ALVIDA' || enemy.type === 'BOSS_MORGAN';
+          if (!isBoss) {
+            enemy.action = 'STUNNED';
+            enemy.stunTimer = 1.5;
+            enemy.windupTimer = 0;
+            enemy.attackCooldown = Math.max(enemy.attackCooldown, 1.5);
+            this.addMangaText(enemy.x, enemy.y - 65, 'STUNNED!!', '#fde047', 1.2);
+          } else {
+            enemy.action = 'HURT';
+          }
+
           enemy.vx = proj.facing * 220;
           enemy.vz = 90;
 
@@ -1109,8 +1350,8 @@ export class GameEngine {
           this.player.score += proj.damage * 20;
 
           achievements.recordCombo(this.player.combo);
-          this.screenShake = 7;
-          this.hitstopTimer = 0.04;
+          this.screenShake = 6;
+          this.hitstopTimer = 0.02;
           sound.playHitImpact(false);
           this.spawnHitSparks(enemy.x, enemy.y - 30);
           this.addDamagePopup(
@@ -1187,7 +1428,18 @@ export class GameEngine {
         hitCount++;
         enemy.hp -= damage;
         enemy.invulnerableTimer = isSpecial ? 0.15 : 0.28;
-        enemy.action = 'HURT';
+
+        const isBoss = enemy.type === 'BOSS_ALVIDA' || enemy.type === 'BOSS_MORGAN';
+        if (!isBoss && (isHeavy || damage >= 24 || enemy.action === 'STUNNED')) {
+          enemy.action = 'STUNNED';
+          enemy.stunTimer = 1.5;
+          enemy.windupTimer = 0;
+          enemy.attackCooldown = Math.max(enemy.attackCooldown, 1.5);
+          this.addMangaText(enemy.x, enemy.y - 65, 'STUNNED!!', '#fde047', 1.2);
+        } else {
+          enemy.action = 'HURT';
+        }
+
         enemy.vx = p.facing * (isHeavy ? 280 : 160);
         enemy.vz = isHeavy ? 180 : 60;
 
@@ -1198,8 +1450,8 @@ export class GameEngine {
         // Record combo milestone
         achievements.recordCombo(p.combo);
 
-        this.screenShake = isSpecial ? 10 : 5;
-        this.hitstopTimer = isHeavy ? 0.08 : 0.04;
+        this.screenShake = isSpecial ? 8 : 4;
+        this.hitstopTimer = isHeavy ? 0.03 : 0.015;
         sound.playHitImpact(isHeavy);
 
         this.spawnHitSparks(enemy.x, enemy.y - 30);
@@ -1393,6 +1645,7 @@ export class GameEngine {
 
     if (enemy.type === 'BOSS_ALVIDA') {
       GameEngine.unlockStage(4);
+      SaveManager.recordStageCleared(3, this.player.score, 1200);
       achievements.recordBossDefeated('ALVIDA');
       sound.playHeavySmash();
       sound.playVictoryFanfare();
@@ -1405,7 +1658,8 @@ export class GameEngine {
         this.onStateChange?.(this.state);
       }, 1600);
     } else if (enemy.type === 'BOSS_MORGAN') {
-      GameEngine.unlockStage(6);
+      GameEngine.unlockStage(7);
+      SaveManager.recordStageCleared(6, this.player.score, 3000);
       achievements.recordBossDefeated('MORGAN');
       sound.playHeavySmash();
       sound.playVictoryFanfare();
@@ -1451,6 +1705,20 @@ export class GameEngine {
       enemy.vy *= 0.88;
 
       enemy.y = Math.max(this.minDeckY, Math.min(this.maxDeckY, enemy.y));
+
+      // AI Logic: STUNNED prevents any attacks or movement for 1.5s to facilitate long combo strings!
+      if (enemy.action === 'STUNNED') {
+        enemy.stunTimer -= dt;
+        enemy.actionTimer += dt;
+        enemy.windupTimer = 0;
+        enemy.attackCooldown = Math.max(enemy.attackCooldown, 1.5);
+        if (enemy.stunTimer <= 0) {
+          enemy.action = 'IDLE';
+          enemy.actionTimer = 0;
+          enemy.stunTimer = 0;
+        }
+        return; // Prevents enemy from walking or initiating attacks
+      }
 
       // AI Logic: HURT interrupts any windup or attack!
       if (enemy.action === 'HURT') {
@@ -1512,6 +1780,13 @@ export class GameEngine {
               sound.playPunch(2);
               this.executeEnemyAttack(enemy, 20, 70);
             }
+          } else if (enemy.type === 'ENEMY_MARINE_ELITE') {
+            enemy.action = 'ATTACK';
+            enemy.actionTimer = 0;
+            enemy.attackCooldown = 1.1;
+            sound.playPunch(2);
+            this.executeEnemyAttack(enemy, 24, 105);
+            this.addMangaText(enemy.x, enemy.y - 65, 'HALBERD THRUST!!', '#f59e0b', 1.2);
           } else {
             enemy.action = 'ATTACK';
             enemy.actionTimer = 0;
@@ -1566,24 +1841,34 @@ export class GameEngine {
           enemy.action = 'IDLE';
         }
       } else {
-        // Standard Grunts & Riflemen
+        // Standard Grunts, Riflemen & Halberd Elite Officers
         if (enemy.attackCooldown > 0) {
           enemy.attackCooldown -= dt;
         }
 
-        const preferredDist = enemy.isGunner ? 180 : 50;
+        const preferredDist = enemy.isGunner ? 190 : enemy.isElite ? 85 : 48;
+        const yMisaligned = Math.abs(dy) > 20;
 
-        if (dist > preferredDist + 20) {
+        if (dist > preferredDist + 15 || yMisaligned) {
           enemy.action = 'WALK';
-          const speed = enemy.isBrute ? 100 : 130;
-          enemy.vx = (dx / dist) * speed;
-          enemy.vy = (dy / dist) * speed * 0.7;
+          const speed = enemy.isBrute ? 100 : enemy.isElite ? 145 : 130;
+          // Calculate heading towards player with flanking offset
+          const targetDistX = Math.abs(dx) > preferredDist ? Math.sign(dx) * (Math.abs(dx) - preferredDist) : dx * 0.4;
+          const targetDistY = dy;
+          const moveLen = Math.hypot(targetDistX, targetDistY) || 1;
+
+          enemy.vx = (targetDistX / moveLen) * speed;
+          enemy.vy = (targetDistY / moveLen) * speed * 0.8;
         } else if (enemy.attackCooldown <= 0 && Math.abs(dy) < 32) {
-          // Enter Telegraph Windup
+          // Enter Telegraph Windup (Fast 0.35s for Elite!)
           enemy.action = 'ATTACK_WINDUP';
-          enemy.windupTimer = enemy.isGunner ? 0.6 : 0.38;
+          enemy.windupTimer = enemy.isGunner ? 0.6 : enemy.isElite ? 0.35 : 0.38;
         } else {
-          enemy.action = 'IDLE';
+          // In combat range: don't freeze into a stone statue! Circle and reposition
+          enemy.action = 'WALK';
+          const flankSpeed = 48;
+          enemy.vx = -Math.sign(dx) * flankSpeed * 0.35;
+          enemy.vy = (Math.sin(this.gameTime * 3 + enemy.x) > 0 ? 1 : -1) * flankSpeed;
         }
       }
     });
@@ -1731,15 +2016,27 @@ export class GameEngine {
         // Stage cleared
         if (this.currentStage === 'STAGE_1_GALLEY') {
           GameEngine.unlockStage(2);
+          SaveManager.recordStageCleared(1, this.player.score, 300);
           this.state = 'STAGE_TRANSITION';
           this.onStateChange?.(this.state);
         } else if (this.currentStage === 'STAGE_2_DECK') {
           GameEngine.unlockStage(3);
+          SaveManager.recordStageCleared(2, this.player.score, 450);
           this.state = 'STAGE_TRANSITION';
           this.onStateChange?.(this.state);
         } else if (this.currentStage === 'STAGE_4_BASE_COURTYARD') {
           GameEngine.unlockStage(5);
+          SaveManager.recordStageCleared(4, this.player.score, 600);
           this.state = 'STAGE_TRANSITION';
+          this.onStateChange?.(this.state);
+        } else if (this.currentStage === 'STAGE_5_FORTRESS_INTERIOR') {
+          GameEngine.unlockStage(6);
+          SaveManager.recordStageCleared(5, this.player.score, 800);
+          this.state = 'STAGE_TRANSITION';
+          this.onStateChange?.(this.state);
+        } else if (this.currentStage === 'STAGE_7_ORANGE_TOWN') {
+          SaveManager.recordStageCleared(7, this.player.score, 2000);
+          this.state = 'VICTORY';
           this.onStateChange?.(this.state);
         }
       }
@@ -1758,10 +2055,13 @@ export class GameEngine {
       this.startStage('STAGE_5_FORTRESS_INTERIOR');
     } else if (this.currentStage === 'STAGE_5_FORTRESS_INTERIOR') {
       this.startStage('STAGE_6_MORGAN_SHOWDOWN');
+    } else if (this.currentStage === 'STAGE_6_MORGAN_SHOWDOWN') {
+      this.startStage('STAGE_7_ORANGE_TOWN');
     }
+    sound.playStageBGM(this.currentStage);
   }
 
-  // Particle & FX management
+  // Particle & FX management (Optimized to prevent garbage collection spikes)
   private updateParticles(dt: number) {
     this.particles.forEach((pt) => {
       pt.x += pt.vx * dt;
@@ -1769,12 +2069,18 @@ export class GameEngine {
       pt.life += dt;
     });
     this.particles = this.particles.filter((pt) => pt.life < pt.maxLife);
+    if (this.particles.length > 50) {
+      this.particles = this.particles.slice(this.particles.length - 50);
+    }
 
     this.damagePopups.forEach((dp) => {
       dp.y -= dt * 45;
       dp.life += dt;
     });
     this.damagePopups = this.damagePopups.filter((dp) => dp.life < dp.maxLife);
+    if (this.damagePopups.length > 16) {
+      this.damagePopups = this.damagePopups.slice(this.damagePopups.length - 16);
+    }
   }
 
   public spawnHitSparks(x: number, y: number) {
@@ -1989,9 +2295,11 @@ export class GameEngine {
         renderables.push({
           y: enemy.y,
           draw: () => {
-            if (enemy.invulnerableTimer > 0 && Math.floor(this.gameTime * 30) % 2 === 0) {
-              ctx.filter = 'brightness(2.2)';
+            const isInvulnFlicker = enemy.invulnerableTimer > 0 && Math.floor(this.gameTime * 24) % 2 === 0;
+            if (isInvulnFlicker) {
+              ctx.globalAlpha = 0.45;
             }
+
             if (enemy.type === 'BOSS_ALVIDA') {
               SpriteRenderer.drawAlvida(
                 ctx,
@@ -2004,6 +2312,17 @@ export class GameEngine {
               );
             } else if (enemy.type === 'BOSS_MORGAN') {
               SpriteRenderer.drawMorgan(
+                ctx,
+                screenX,
+                enemy.y,
+                enemy.z,
+                enemy.facing,
+                enemy.action,
+                enemy.actionTimer,
+                enemy.actionTimer * 30
+              );
+            } else if (enemy.type === 'ENEMY_MARINE_ELITE') {
+              SpriteRenderer.drawMarineElite(
                 ctx,
                 screenX,
                 enemy.y,
@@ -2037,7 +2356,29 @@ export class GameEngine {
                 enemy.isBrute
               );
             }
-            ctx.filter = 'none';
+
+            // Stunned spinning stars effect
+            if (enemy.action === 'STUNNED') {
+              SpriteRenderer.drawStunnedStars(
+                ctx,
+                screenX,
+                enemy.y - enemy.z,
+                this.gameTime
+              );
+            }
+
+            if (enemy.action === 'ATTACK_WINDUP') {
+              SpriteRenderer.drawTelegraphWarning(
+                ctx,
+                screenX,
+                enemy.y,
+                enemy.type === 'BOSS_ALVIDA' || enemy.type === 'BOSS_MORGAN',
+                enemy.type === 'ENEMY_MARINE_GUN'
+              );
+            }
+            if (isInvulnFlicker) {
+              ctx.globalAlpha = 1.0;
+            }
           },
         });
       }
@@ -2047,8 +2388,9 @@ export class GameEngine {
     renderables.push({
       y: this.player.y,
       draw: () => {
-        if (this.player.invulnerableTimer > 0 && Math.floor(this.gameTime * 30) % 2 === 0) {
-          ctx.filter = 'brightness(2.2)';
+        const isPlayerInvuln = this.player.invulnerableTimer > 0 && Math.floor(this.gameTime * 24) % 2 === 0;
+        if (isPlayerInvuln) {
+          ctx.globalAlpha = 0.45;
         }
 
         if (this.player.character === 'ZORO') {
@@ -2074,7 +2416,9 @@ export class GameEngine {
             this.player.walkFrame
           );
         }
-        ctx.filter = 'none';
+        if (isPlayerInvuln) {
+          ctx.globalAlpha = 1.0;
+        }
       },
     });
 
